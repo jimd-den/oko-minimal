@@ -191,11 +191,14 @@ reference and leaves the label out.
 ## The gate
 
 ```
-cargo build --all-targets      no errors
-cargo test -q -- --test-threads=1   144 + 7 + 1 passed, 0 failed
-cargo fmt --all                 clean
-cargo clippy --all-targets -- -D warnings   clean
-make check                      exit 0
+cargo build --all-targets                     no errors
+cargo test -q -- --test-threads=1             144 + 7 + 1 passed, 0 failed
+cargo fmt --all                               clean, tree unchanged
+cargo clippy --all-targets -- -D warnings     clean
+make check                                    exit 0
 ```
+
+`make check` is the whole-repo gate: the line budget, the format check, the
+type check, the lint and the tests. It is green.
 
 The branch had 132 `#[test]` functions before this work; it has 152 now.
