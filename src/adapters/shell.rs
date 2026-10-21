@@ -1,0 +1,116 @@
+//! The shell around the runtime: the file, the terminal, and the loop that
+//! joins them.
+//!
+//! The runtime decides what should happen. This file does it. It reads the
+//! document, watches the file for changes, reads the keys the terminal
+//! sends, and presents the frames. Everything here touches a device, and
+//! none of it decides anything.
+//!
+//! The panel is presented on the alternate screen, so it does not scroll the
+//! person's history away, and the cursor is hidden, because a cursor
+//! blinking on top of a panel is a cursor on top of a panel.
+
+use std::fs;
+use std::io::{self, Write};
+use std::path::Path;
+use std::time::{Duration, SystemTime};
+
+use crate::core::session::Effect;
+
+use super::keys::Decoder;
+use super::presenter;
+use super::runtime::Runtime;
+use super::terminal::Terminal;
+
+/// How long to wait for a key before looking at the file.
+const TICK: Duration = Duration::from_millis(100);
+
+/// The alternate screen: the panel does not scroll the history away.
+const ALTERNATE: &str = "\x1b[?1049h";
+const MAIN: &str = "\x1b[?1049l";
+/// The cursor, hidden while the panel is up.
+const HIDE: &str = "\x1b[?25l";
+const SHOW: &str = "\x1b[?25h";
+
+/// Run the console on a document, until the screen is handed back.
+pub fn run(path: &Path) -> io::Result<()> {
+    let mut terminal = Terminal::stdin()?;
+    let (columns, rows) = terminal.size()?;
+    let mut runtime = Runtime::new(columns, rows.saturating_mul(2));
+    let mut decoder = Decoder::new();
+    let mut out = io::stdout();
+
+    let mut seen = stamp(path);
+    if let Some(text) = read(path) {
+        load(&mut runtime, &text);
+        present(&mut out, &runtime)?;
+    }
+
+    write!(out, "{ALTERNATE}{HIDE}")?;
+    out.flush()?;
+    terminal.set_raw()?;
+    let _ = runtime.take_display();
+
+    let mut buffer = [0u8; 64];
+    let mut running = true;
+    while running {
+        let count = terminal.read(&mut buffer, TICK)?;
+        if count > 0 {
+            decoder.feed(&buffer[..count]);
+            while let Some(event) = decoder.event() {
+                if let Some(Effect::ReclaimDisplay) = runtime.event(event) {
+                    running = false;
+                }
+            }
+        }
+        let now = stamp(path);
+        if now != seen {
+            seen = now;
+            if let Some(text) = read(path) {
+                load(&mut runtime, &text);
+                present(&mut out, &runtime)?;
+            }
+        }
+    }
+
+    write!(out, "{SHOW}{MAIN}")?;
+    out.flush()
+}
+
+/// Give the runtime a document, and say why it did not take it.
+///
+/// A document that does not parse leaves the last good panel on the screen:
+/// an editor that blanks the panel on every keystroke of a half-typed line
+/// is an editor that is always empty.
+fn load(runtime: &mut Runtime, text: &str) {
+    if let Err(problem) = runtime.document(text) {
+        eprintln!("{problem}");
+    }
+}
+
+/// Put the frame on the screen.
+fn present(out: &mut impl Write, runtime: &Runtime) -> io::Result<()> {
+    let Some(frame) = runtime.frame() else {
+        return Ok(());
+    };
+    out.write_all(presenter::screen(frame).as_bytes())?;
+    out.flush()
+}
+
+/// Read the document, if it can be read.
+fn read(path: &Path) -> Option<String> {
+    match fs::read_to_string(path) {
+        Ok(text) => Some(text),
+        Err(error) => {
+            eprintln!("oko: {}: {error}", path.display());
+            None
+        }
+    }
+}
+
+/// When the file was last changed, which is how a change is noticed.
+fn stamp(path: &Path) -> Option<SystemTime> {
+    fs::metadata(path)
+        .ok()
+        .and_then(|meta| meta.modified().ok())
+}

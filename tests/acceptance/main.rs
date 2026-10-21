@@ -4,7 +4,7 @@
 //! bytes a terminal receives come out; an event goes in and the console gets an
 //! answer. They do not know how the pixels are made.
 
-use oko::adapters::terminal::{PaintError, paint};
+use oko::adapters::presenter::{PaintError, paint};
 use oko::core::event::{Event, Key, KeyCode, Modifiers};
 use oko::core::focus::SurfaceId;
 use oko::core::lease::OwnerId;
@@ -60,7 +60,7 @@ fn an_svg_export_becomes_a_panel_document() {
             color: oko::core::geom::Rgba::rgb(5, 7, 10),
         }
     );
-    assert!(oko::adapters::terminal::paint(&document, 80, 48).is_ok());
+    assert!(oko::adapters::presenter::paint(&document, 80, 48).is_ok());
 }
 
 /// A panel with a hole is still a panel: the shapes the console can draw are
