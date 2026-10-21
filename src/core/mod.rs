@@ -22,6 +22,8 @@ pub mod raster;
 #[cfg(test)]
 mod raster_tests;
 pub mod scene;
+#[cfg(test)]
+mod scene_tests;
 pub mod session;
 pub mod shape;
 pub mod syntax;
