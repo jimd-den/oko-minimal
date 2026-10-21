@@ -22,7 +22,7 @@ fn a_fill_in_a_style_is_found() {
 
     let paint = Inherited::stated(&element, "fill").expect("a fill");
 
-    assert_eq!(paint, Some(Paint::Colour(Rgba::rgb(1, 2, 3))));
+    assert_eq!(paint, Paint::Colour(Rgba::rgb(1, 2, 3)));
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn the_attribute_wins_over_the_style() {
 
     let paint = Inherited::stated(&element, "fill").expect("a fill");
 
-    assert_eq!(paint, Some(Paint::Colour(Rgba::rgb(255, 255, 255))));
+    assert_eq!(paint, Paint::Colour(Rgba::rgb(255, 255, 255)));
 }
 
 #[test]
@@ -42,9 +42,7 @@ fn a_paint_server_is_named() {
 
     assert_eq!(
         paint,
-        Some(Paint::Unsupported(
-            "the fill is the paint server `url(#gradient)`".to_string()
-        ))
+        Paint::Unsupported("the fill is the paint server `url(#gradient)`".to_string())
     );
 }
 
@@ -72,8 +70,5 @@ fn a_shape_nobody_filled_is_black() {
 fn a_stroked_outline_without_a_fill_is_an_outline() {
     let shape = element(&[("stroke", "#000000")]);
 
-    assert_eq!(
-        Inherited::default().outline_fill_of(&shape),
-        Paint::Nothing
-    );
+    assert_eq!(Inherited::default().outline_fill_of(&shape), Paint::Nothing);
 }

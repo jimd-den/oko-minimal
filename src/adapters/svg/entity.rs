@@ -64,7 +64,8 @@ fn numeric(code: &str, name: &str, line: usize) -> Result<char, SvgError> {
         None => code.parse::<u32>().ok(),
     };
     let value = value.ok_or_else(|| SvgError::new(line, format!("`&{name};` is not a number")))?;
-    char::from_u32(value).ok_or_else(|| SvgError::new(line, format!("`&{name};` is not a character")))
+    char::from_u32(value)
+        .ok_or_else(|| SvgError::new(line, format!("`&{name};` is not a character")))
 }
 
 #[cfg(test)]

@@ -13,7 +13,7 @@ mod run;
 #[cfg(test)]
 mod tests;
 
-pub use run::{emit, label, Label};
+pub use run::{Label, emit, label};
 
 use super::error::SvgError;
 use super::values;

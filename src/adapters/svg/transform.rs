@@ -40,9 +40,7 @@ pub fn transform(word: &str) -> Transform {
         if parts.len() != 6 {
             return Transform::Undrawn(format!("`{word}` needs six numbers"));
         }
-        let (a, b, c, d, e, f) = (
-            parts[0], parts[1], parts[2], parts[3], parts[4], parts[5],
-        );
+        let (a, b, c, d, e, f) = (parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]);
         if b == 0.0 && c == 0.0 && a == 1.0 && d == 1.0 {
             return Transform::Shift(e.round() as i32, f.round() as i32);
         }

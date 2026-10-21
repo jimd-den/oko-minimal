@@ -14,7 +14,8 @@ fn absolute_commands_become_points() {
                 Point::new(8, 2),
                 Point::new(8, 6),
                 Point::new(2, 6),
-            ],
+            ]
+            .to_vec(),
             closed: true,
         })
     );
@@ -32,7 +33,8 @@ fn a_closed_path_does_not_repeat_its_first_point() {
                 Point::new(10, 0),
                 Point::new(10, 10),
                 Point::new(0, 10),
-            ],
+            ]
+            .to_vec(),
             closed: true,
         })
     );
@@ -50,7 +52,8 @@ fn relative_commands_accumulate() {
                 Point::new(8, 2),
                 Point::new(8, 6),
                 Point::new(2, 6),
-            ],
+            ]
+            .to_vec(),
             closed: true,
         })
     );
@@ -62,9 +65,7 @@ fn a_curve_is_reported_by_name() {
 
     assert_eq!(
         path,
-        Path::Undrawn(
-            "the path uses `C`, which this console does not draw".to_string()
-        )
+        Path::Undrawn("the path uses `C`, which this console does not draw".to_string())
     );
 }
 

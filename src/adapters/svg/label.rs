@@ -7,9 +7,9 @@
 
 use super::error::SvgError;
 use super::paint::Paint;
+use super::text;
 use super::translator::{Scope, Translator};
 use super::xml::{Element, Text};
-use super::text;
 
 impl Translator {
     /// A text element: the style and the colour its runs are drawn with.

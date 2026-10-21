@@ -133,7 +133,7 @@ pub fn path(
             None => {
                 return Ok(Outcome::Undrawn(
                     "the fill of this path is not an axis-aligned rectangle".to_string(),
-                ))
+                ));
             }
         }
     } else if let Paint::Unsupported(reason) = fill {

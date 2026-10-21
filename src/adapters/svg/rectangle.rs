@@ -26,9 +26,8 @@ pub fn from_outline(outline: &Outline) -> Option<Rect> {
     let on_corner = |point: &crate::core::geom::Point| {
         (point.x == left || point.x == right) && (point.y == top || point.y == bottom)
     };
-    let adjacent = |a: &crate::core::geom::Point, b: &crate::core::geom::Point| {
-        a.x == b.x || a.y == b.y
-    };
+    let adjacent =
+        |a: &crate::core::geom::Point, b: &crate::core::geom::Point| a.x == b.x || a.y == b.y;
     if !points.iter().all(on_corner) {
         return None;
     }

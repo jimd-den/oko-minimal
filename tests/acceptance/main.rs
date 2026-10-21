@@ -47,7 +47,9 @@ fn the_escape_chord_hands_the_screen_back_to_the_console() {
 fn an_svg_export_becomes_a_panel_document() {
     let svg = include_str!("../../examples/panel.svg");
 
-    let document = oko::adapters::svg::translate(svg).expect("a supported export");
+    let document = oko::adapters::svg::translate(svg)
+        .expect("a supported export")
+        .document;
     let scene =
         oko::core::document::parse(&document).expect("the translator writes valid documents");
 
@@ -61,22 +63,31 @@ fn an_svg_export_becomes_a_panel_document() {
     assert!(oko::adapters::terminal::paint(&document, 80, 48).is_ok());
 }
 
+/// A panel with a hole is still a panel: the shapes the console can draw are
+/// in the document, and the one it cannot is named with the line it was on.
 #[test]
-fn an_svg_curve_is_refused_with_its_line() {
-    let svg =
-        "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 C 1 1 2 2 3 3\" fill=\"#000000\"/>\n</svg>";
+fn a_panel_with_a_hole_still_loads_and_reports_the_hole() {
+    let svg = "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 C 1 1 2 2 3 3\" fill=\"#000000\"/>\n<rect x=\"1\" y=\"1\" width=\"2\" height=\"2\" fill=\"#ff9d00\"/>\n</svg>";
 
-    let error = oko::adapters::svg::translate(svg).expect_err("a curve");
+    let translation = oko::adapters::svg::translate(svg).expect("a panel with a hole");
 
-    assert_eq!(error.line, 2);
-    assert!(error.problem.contains("`C`"));
+    assert_eq!(translation.document, "rect 1 1 2 2 #ff9d00\n");
+    assert!(
+        oko::core::document::parse(&translation.document).is_ok(),
+        "the panel around the hole is a document"
+    );
+    assert_eq!(translation.skipped.len(), 1);
+    assert_eq!(translation.skipped[0].line, 2);
+    assert!(translation.skipped[0].reason.contains("`C`"));
 }
 
 #[test]
 fn an_svg_label_becomes_a_text_operation() {
     let svg = include_str!("../../examples/text-panel.svg");
 
-    let document = oko::adapters::svg::translate(svg).expect("a supported export");
+    let document = oko::adapters::svg::translate(svg)
+        .expect("a supported export")
+        .document;
     let scene =
         oko::core::document::parse(&document).expect("the translator writes valid documents");
 
@@ -114,5 +125,32 @@ fn an_svg_label_becomes_a_text_operation() {
                 color: oko::core::geom::Rgba::rgb(201, 209, 217),
             },
         ]
+    );
+}
+
+/// The command writes the panel to standard output and the report of what it
+/// could not draw to standard error, so a pipe keeps only the panel.
+#[test]
+fn the_command_writes_the_panel_out_and_the_report_away() {
+    let svg =
+        "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 C 1 1 2 2 3 3\" fill=\"#000000\"/>\n</svg>";
+    let path = std::env::temp_dir().join("oko-svg-hole.svg");
+    std::fs::write(&path, svg).expect("the export is written");
+
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_oko-svg"))
+        .arg(&path)
+        .output()
+        .expect("the command runs");
+
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    let report = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        report.contains("`C`"),
+        "the report names the curve: {report}"
+    );
+    assert!(
+        report.contains(":2:"),
+        "the report names the line: {report}"
     );
 }

@@ -17,7 +17,7 @@ use super::cursor::Cursor;
 use super::entity;
 use super::error::SvgError;
 use super::tag::{self, Tag};
-use super::xml::{Element, Node, Text, MAX_ELEMENTS};
+use super::xml::{Element, MAX_ELEMENTS, Node, Text};
 
 /// The tree an export writes, with its root element.
 pub fn document(source: &str) -> Result<Element, SvgError> {
@@ -29,7 +29,9 @@ pub fn document(source: &str) -> Result<Element, SvgError> {
     let root = reader.element()?;
     reader.skip_noise()?;
     if reader.cursor.byte().is_some() {
-        return Err(reader.cursor.error("the export has content after its root element"));
+        return Err(reader
+            .cursor
+            .error("the export has content after its root element"));
     }
     Ok(root)
 }
@@ -123,8 +125,7 @@ impl Reader<'_> {
         loop {
             self.cursor.whitespace();
             if self.cursor.begins("<!--") {
-                self.cursor
-                    .skip_past("-->", "an unterminated comment")?;
+                self.cursor.skip_past("-->", "an unterminated comment")?;
                 continue;
             }
             if self.cursor.begins("<?") {

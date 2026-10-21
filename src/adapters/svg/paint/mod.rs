@@ -9,6 +9,7 @@
 //! cannot resolve one, so the shape it paints is left out and the reference is
 //! named in the report.
 
+#[cfg(test)]
 mod tests;
 
 use super::colour::{self, Colour};
@@ -99,7 +100,10 @@ impl Inherited {
         if word == "none" {
             return Paint::Nothing;
         }
-        if let Some(reference) = word.strip_prefix("url(").and_then(|rest| rest.strip_suffix(')')) {
+        if let Some(reference) = word
+            .strip_prefix("url(")
+            .and_then(|rest| rest.strip_suffix(')'))
+        {
             return Paint::Unsupported(format!(
                 "the {property} is the paint server `url({reference})`"
             ));

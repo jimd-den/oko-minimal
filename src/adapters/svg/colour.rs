@@ -26,10 +26,16 @@ pub fn parse(word: &str) -> Option<Colour> {
     if let Some(digits) = word.strip_prefix('#') {
         return hex(digits);
     }
-    if let Some(inner) = word.strip_prefix("rgb(").and_then(|rest| rest.strip_suffix(')')) {
+    if let Some(inner) = word
+        .strip_prefix("rgb(")
+        .and_then(|rest| rest.strip_suffix(')'))
+    {
         return channels(inner, false);
     }
-    if let Some(inner) = word.strip_prefix("rgba(").and_then(|rest| rest.strip_suffix(')')) {
+    if let Some(inner) = word
+        .strip_prefix("rgba(")
+        .and_then(|rest| rest.strip_suffix(')'))
+    {
         return channels(inner, true);
     }
     names::colour(word).map(Colour::Opaque)
@@ -76,13 +82,17 @@ fn channels(inner: &str, alpha: bool) -> Option<Colour> {
     }
     if !alpha {
         return Some(Colour::Opaque(Rgba::rgb(
-            channels[0], channels[1], channels[2],
+            channels[0],
+            channels[1],
+            channels[2],
         )));
     }
     let opacity: f64 = parts[3].parse().ok()?;
     if opacity >= 1.0 {
         return Some(Colour::Opaque(Rgba::rgb(
-            channels[0], channels[1], channels[2],
+            channels[0],
+            channels[1],
+            channels[2],
         )));
     }
     Some(Colour::Translucent)
@@ -103,7 +113,10 @@ mod tests {
 
     #[test]
     fn a_hex_colour_is_read() {
-        assert_eq!(parse("#ff9d00"), Some(Colour::Opaque(Rgba::rgb(255, 157, 0))));
+        assert_eq!(
+            parse("#ff9d00"),
+            Some(Colour::Opaque(Rgba::rgb(255, 157, 0)))
+        );
     }
 
     #[test]

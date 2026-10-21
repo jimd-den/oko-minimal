@@ -4,8 +4,8 @@
 //! records what it cannot, with the line the shape was on, so a person reading
 //! the report can find it in the file they exported.
 
-use super::emit::Writer;
 use super::elements;
+use super::emit::Writer;
 use super::error::SvgError;
 use super::outcome::Outcome;
 use super::paint::Inherited;
@@ -63,23 +63,26 @@ impl Translator {
     }
 
     /// Draw one element and everything inside it.
+    ///
+    /// The whitelist lives in `elements`: an element this console does not
+    /// draw is named in the report rather than refused.
     fn element(&mut self, element: &Element, scope: &Scope) -> Result<(), SvgError> {
         let name = element.name.as_str();
         if elements::is_structural(name) {
+            return Ok(());
+        }
+        if !elements::is_drawn(name) {
+            self.skip(
+                element.line,
+                format!("`<{name}>` is not an element this console draws"),
+            );
             return Ok(());
         }
         match name {
             "svg" | "g" => self.group(element, scope),
             "text" => self.text(element, scope),
             "tspan" => self.span(element, scope),
-            "rect" | "line" | "polyline" | "path" => self.shape(element, scope),
-            other => {
-                self.skip(
-                    element.line,
-                    format!("`<{other}>` is not an element this console draws"),
-                );
-                Ok(())
-            }
+            _ => self.shape(element, scope),
         }
     }
 
@@ -119,14 +122,18 @@ impl Translator {
         for child in &element.children {
             match child {
                 Node::Element(child) => self.element(child, scope)?,
-                Node::Text(run) => self.run(run, scope)?,
+                Node::Text(run) => self.run_text(run, scope)?,
             }
         }
         Ok(())
     }
 
     /// Where an element's own transform puts its origin.
-    pub(super) fn at(&self, element: &Element, scope: &Scope) -> Result<Option<(i32, i32)>, SvgError> {
+    pub(super) fn at(
+        &mut self,
+        element: &Element,
+        scope: &Scope,
+    ) -> Result<Option<(i32, i32)>, SvgError> {
         let Some(shift) = self.shift(element)? else {
             return Ok(None);
         };
