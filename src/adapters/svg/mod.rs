@@ -6,8 +6,8 @@
 //! readable, diffable, hot-reloadable, and independent of the tool that drew it.
 //!
 //! The translator is a whitelist, not a renderer. It reads `rect`, `line`,
-//! `polyline`, straight-line `path`, `text` with its `tspan` lines, and `g`
-//! with a translation. What it cannot draw it does not approximate: a curve, a
+//! `polyline`, `path` with its curves, `text` with its `tspan` lines, and `g`
+//! with a translation. What it cannot draw it does not approximate: an arc, a
 //! paint server, a transform it does not implement, an element outside the
 //! whitelist, and a character the built-in font does not have are left out of
 //! the document, and the report says which and why. A panel with holes is
