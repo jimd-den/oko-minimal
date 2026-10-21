@@ -1,0 +1,32 @@
+# MU-TH-UR 6000 terminal, animated. Canvas 256x120.
+clear #000000
+rect 2 2 252 116 #7a5200
+rect 5 5 246 110 #000000
+
+# --- header ---
+text 10 9 "MU-TH-UR 6000" 2 #ffb000
+text 166 20 "WEYLAND-YUTANI" 1 #7a5200
+line 10 28 246 28 #7a5200
+text 10 33 "INTERFACE 2037 - SPECIAL ORDER 937" 1 #ffb000
+
+# --- the order ---
+text 10 44 "PRIORITY ONE" 2 #ffb000
+text 10 62 "ENSURE RETURN OF ORGANISM" 1 #ffb000
+text 10 72 "ALL OTHER CONSIDERATIONS" 1 #ffb000
+text 10 82 "CREW EXPENDABLE" 1 #ff2222
+
+# --- blinking cursor block ---
+rect 118 81 8 8 #ffb000 to 118 81 8 8 #000000 over 500ms to 118 81 8 8 #ffb000 over 500ms
+
+# --- proximity tracker: sweep line, a blip that fades in and out ---
+rect 168 40 78 56 #7a5200
+rect 170 42 74 52 #000000
+text 176 45 "PROXIMITY" 1 #39ff6a
+rect 196 58 5 5 #000000 after 900ms to 196 58 5 5 #39ff6a over 300ms to 196 58 5 5 #39ff6a over 900ms to 196 58 5 5 #000000 over 600ms
+line 207 90 176 48 #39ff6a to 207 90 238 48 #39ff6a over 2400ms to 207 90 176 48 #39ff6a over 2400ms
+
+# --- signal lock bar ---
+text 10 100 "SIGNAL" 1 #ffb000
+rect 60 99 120 6 #33200a
+rect 60 99 4 6 #ffb000 after 200ms to 60 99 118 6 #ffb000 over 2800ms
+text 190 100 "LOCK" 1 #7a5200

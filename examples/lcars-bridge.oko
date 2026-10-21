@@ -1,0 +1,54 @@
+# LCARS bridge, animated. Canvas 256x120.
+clear #000000
+
+# --- frame (static) ---
+path M 0 26 L 0 8 Q 0 0 8 0 L 40 0 L 40 10 L 16 10 Q 8 10 8 26 Z fill #ff9900
+rect 44 0 160 10 #ff9900
+rect 208 0 48 10 #ffcc66
+text 48 2 "USS OKO - BRIDGE" 1 #000000
+text 211 2 "26804.2" 1 #000000
+path M 0 30 L 44 30 C 50 30 56 32 56 35 C 56 37 50 39 44 39 L 0 39 Z fill #ffcc66
+text 4 31 "BRIDGE" 1 #000000
+path M 0 42 L 44 42 C 50 42 56 44 56 47 C 56 49 50 51 44 51 L 0 51 Z fill #9999cc
+text 4 43 "NAV" 1 #000000
+path M 0 54 L 44 54 C 50 54 56 56 56 59 C 56 61 50 63 44 63 L 0 63 Z fill #ffcc99
+text 4 55 "COMPUTER" 1 #000000
+path M 0 66 L 44 66 C 50 66 56 68 56 71 C 56 73 50 75 44 75 L 0 75 Z fill #cc99cc
+text 4 67 "SYSTEMS" 1 #000000
+rect 0 92 10 28 #664400
+rect 64 108 192 10 #ffcc99
+text 68 110 "ALL SYSTEMS NOMINAL" 1 #000000
+text 202 110 "SD 26804" 1 #000000
+path M 64 20 C 130 32 190 32 248 20 L 248 26 C 190 38 130 38 64 26 Z fill #9977cc
+
+# --- the alert pill pulses (path colour legs, chained) ---
+path M 0 78 L 44 78 C 50 78 56 80 56 83 C 56 85 50 87 44 87 L 0 87 Z fill #cc6666 to M 0 78 L 44 78 C 50 78 56 80 56 83 C 56 85 50 87 44 87 L 0 87 Z fill #ff2222 over 700ms to M 0 78 L 44 78 C 50 78 56 80 56 83 C 56 85 50 87 44 87 L 0 87 Z fill #cc6666 over 700ms
+text 4 79 "ALERT" 1 #000000
+
+# --- sensor sweep strip: a marker crosses the stage ---
+text 64 34 "MAIN SYSTEMS" 2 #ff9900
+rect 64 50 184 7 #1a1206
+rect 66 51 3 5 #9999ff after 300ms to 242 51 3 5 #9999ff over 2700ms
+
+# --- status rows (static) with one blinking dot ---
+rect 64 62 26 6 #ff9900
+text 94 61 "CORE RUNNING" 1 #ffcc99
+rect 172 62 6 6 #33ff66 to 172 62 6 6 #003300 over 600ms to 172 62 6 6 #33ff66 over 600ms
+rect 64 72 26 6 #9999cc
+text 94 71 "ENGINE READY" 1 #ffcc99
+rect 64 82 26 6 #9977cc
+text 94 81 "SHIELDS 98" 1 #ffcc99
+text 190 61 "47" 1 #9999cc
+text 214 61 "021" 1 #ffcc66
+text 238 61 "88" 1 #cc99cc
+text 190 71 "102" 1 #ffcc99
+text 214 71 "77" 1 #9999cc
+text 238 71 "309" 1 #ffcc66
+text 190 81 "55" 1 #cc99cc
+text 214 81 "901" 1 #ffcc99
+text 238 81 "12" 1 #9999cc
+
+# --- warp core meter: the fill grows over three seconds ---
+text 64 95 "WARP CORE" 1 #ffcc99
+rect 150 94 96 8 #33270f
+rect 150 94 6 8 #ffcc66 after 200ms to 150 94 92 8 #ffcc66 over 3000ms

@@ -1,0 +1,93 @@
+# USS OKO - LCARS computer. One panel: animated, modal, key-driven.
+# Keys: 1 bridge | 2 systems | R red alert | S stand down | D data | B back | Q quit
+clear #000000
+flag systems false
+flag alert false
+flag data false
+
+# --- bridge chrome (always) ---
+path M 0 26 L 0 8 Q 0 0 8 0 L 40 0 L 40 10 L 16 10 Q 8 10 8 26 Z fill #ff9900
+rect 44 0 160 10 #ff9900
+rect 208 0 48 10 #ffcc66
+text 48 2 "USS OKO - LCARS ACCESS" 1 #000000
+text 216 2 "47-A" 1 #000000
+path M 0 30 L 44 30 C 50 30 56 32 56 35 C 56 37 50 39 44 39 L 0 39 Z fill #ffcc66
+text 4 31 "BRIDGE" 1 #000000
+path M 0 42 L 44 42 C 50 42 56 44 56 47 C 56 49 50 51 44 51 L 0 51 Z fill #9999cc
+text 4 43 "NAV" 1 #000000
+path M 0 54 L 44 54 C 50 54 56 56 56 59 C 56 61 50 63 44 63 L 0 63 Z fill #ffcc99
+text 4 55 "OPS" 1 #000000
+path M 0 66 L 44 66 C 50 66 56 68 56 71 C 56 73 50 75 44 75 L 0 75 Z fill #cc99cc
+text 4 67 "ENG" 1 #000000
+path M 0 78 L 44 78 C 50 78 56 80 56 83 C 56 85 50 87 44 87 L 0 87 Z fill #cc6666
+text 4 79 "ALERT" 1 #000000
+rect 0 92 10 28 #664400
+rect 64 108 192 10 #ffcc99
+text 68 110 "1 BRIDGE  2 SYS  R ALERT  D DATA  Q QUIT" 1 #000000
+path M 64 16 C 130 28 190 28 248 16 L 248 22 C 190 34 130 34 64 22 Z fill #9977cc
+
+# --- bridge stage: animated sensor sweep, status, warp meter ---
+text 64 32 "MAIN SYSTEMS" 2 #ff9900
+rect 64 48 184 7 #1a1206
+rect 66 49 3 5 #9999ff after 300ms to 242 49 3 5 #9999ff over 2700ms
+rect 64 60 26 6 #ff9900
+text 94 59 "CORE RUNNING" 1 #ffcc99
+rect 172 60 6 6 #33ff66 to 172 60 6 6 #003300 over 600ms to 172 60 6 6 #33ff66 over 600ms
+rect 64 70 26 6 #9999cc
+text 94 69 "ENGINE READY" 1 #ffcc99
+rect 64 80 26 6 #9977cc
+text 94 79 "SHIELDS 98" 1 #ffcc99
+text 190 59 "47" 1 #9999cc
+text 214 59 "021" 1 #ffcc66
+text 238 59 "88" 1 #cc99cc
+text 190 69 "102" 1 #ffcc99
+text 214 69 "77" 1 #9999cc
+text 238 69 "309" 1 #ffcc66
+text 64 93 "WARP CORE" 1 #ffcc99
+rect 150 92 96 8 #33270f
+rect 150 92 6 8 #ffcc66 after 200ms to 150 92 92 8 #ffcc66 over 3000ms
+
+# --- systems overlay (key 2) ---
+rect 60 12 196 94 #050510 when systems
+rect 60 12 196 4 #9999cc when systems
+text 66 20 "SYS DIAGNOSTIC" 2 #9999cc when systems
+text 66 38 "PROPULSION" 1 #ffcc99 when systems
+rect 150 37 90 7 #1a1206 when systems
+rect 150 37 81 7 #ff9900 when systems
+text 66 50 "LIFE SUPPORT" 1 #ffcc99 when systems
+rect 150 49 90 7 #1a1206 when systems
+rect 150 49 88 7 #33ff66 when systems
+text 66 62 "WEAPONS" 1 #ffcc99 when systems
+rect 150 61 90 7 #1a1206 when systems
+rect 150 61 45 7 #cc99cc when systems
+text 66 74 "SENSORS" 1 #ffcc99 when systems
+rect 150 73 90 7 #1a1206 when systems
+rect 150 73 72 7 #9999ff when systems
+text 66 88 "ALL DECKS REPORT READY" 1 #ff9900 when systems
+
+# --- data cascade overlay (key D) ---
+rect 186 12 70 94 #0a0610 when data
+rect 186 12 70 4 #cc99cc when data
+text 190 20 "DATA" 1 #cc99cc when data
+text 190 32 "8472" 1 #ffcc66 when data
+text 190 42 "011" 1 #9999cc when data
+text 190 52 "593" 1 #ffcc99 when data
+text 190 62 "88" 1 #cc99cc when data
+text 190 72 "1204" 1 #ffcc66 when data
+text 190 82 "66" 1 #9999cc when data
+text 190 92 "3077" 1 #ffcc99 when data
+
+# --- red alert overlay (key R), drawn last, on top of everything ---
+rect 0 0 256 6 #ff0000 when alert
+rect 0 114 256 6 #ff0000 when alert
+rect 96 40 64 16 #ff0000 when alert
+text 102 44 "RED ALERT" 1 #000000 when alert
+
+# --- bindings ---
+on key 1 set systems false
+on key 2 set systems true
+on key r set alert true
+on key s set alert false
+on key d set data true
+on key b set data false
+on key q quit

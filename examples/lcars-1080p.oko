@@ -1,0 +1,246 @@
+# USS OKO - full LCARS computer, 1920x1080 canvas. Keys: 1/2 modes, R/S alert, D/B data, Q quit
+clear #000000
+flag systems false
+flag alert false
+flag data false
+
+# --- header ---
+path M 0 170 L 0 60 Q 0 0 60 0 L 300 0 L 300 60 L 115 60 Q 72 60 72 170 Z fill #ff9900
+rect 320 0 1250 60 #ff9900
+rect 1590 0 330 60 #ffcc66
+text 345 14 "USS OKO - LCARS ACCESS" 4 #000000
+text 1615 14 "SD 26804" 4 #000000
+
+# --- left rail ---
+path M 0 190 L 288 190 C 312 190 330 204 330 222 C 330 240 312 254 288 254 L 0 254 Z fill #ffcc66
+text 24 209 "BRIDGE" 3 #000000
+path M 0 270 L 288 270 C 312 270 330 284 330 302 C 330 320 312 334 288 334 L 0 334 Z fill #9999cc
+text 24 289 "NAVIGATION" 3 #000000
+path M 0 350 L 288 350 C 312 350 330 364 330 382 C 330 400 312 414 288 414 L 0 414 Z fill #ffcc99
+text 24 369 "OPERATIONS" 3 #000000
+path M 0 430 L 288 430 C 312 430 330 444 330 462 C 330 480 312 494 288 494 L 0 494 Z fill #cc99cc
+text 24 449 "ENGINEERING" 3 #000000
+path M 0 510 L 288 510 C 312 510 330 524 330 542 C 330 560 312 574 288 574 L 0 574 Z fill #9999ff
+text 24 529 "SCIENCE" 3 #000000
+path M 0 590 L 288 590 C 312 590 330 604 330 622 C 330 640 312 654 288 654 L 0 654 Z fill #cc6666
+text 24 609 "MEDICAL" 3 #000000
+rect 0 690 88 390 #664400
+rect 108 690 10 390 #9977cc
+text 130 700 "47" 3 #ffcc66
+text 130 760 "021" 3 #9999cc
+text 130 820 "88" 3 #cc99cc
+text 130 880 "309" 3 #ffcc99
+text 130 940 "77" 3 #9999ff
+text 130 1000 "1204" 3 #ffcc66
+
+# --- viewscreen ---
+rect 360 90 1100 470 #0a0a20
+rect 360 90 1100 14 #9977cc
+text 378 118 "FORWARD VIEWSCREEN - SECTOR 47" 3 #bbaadd
+rect 1105 167 5 5 #ffeebb after 400ms to 1105 167 5 5 #1a2440 over 700ms to 1105 167 5 5 #ffeebb over 700ms
+rect 1314 427 4 4 #88aaff
+rect 1434 332 5 5 #ffeebb
+rect 468 349 3 3 #ffffff
+rect 386 270 5 5 #ffeebb
+rect 403 296 6 6 #dddddd
+rect 856 256 6 6 #ffeebb
+rect 880 152 6 6 #88aaff
+rect 786 257 3 3 #aaccff
+rect 1068 185 4 4 #ffeebb after 1300ms to 1068 185 4 4 #1a2440 over 700ms to 1068 185 4 4 #ffeebb over 700ms
+rect 902 184 4 4 #88aaff
+rect 832 376 3 3 #dddddd
+rect 971 530 4 4 #ffeebb
+rect 920 317 6 6 #ffeebb
+rect 467 382 4 4 #ffeebb
+rect 837 445 3 3 #aaccff
+rect 903 444 6 6 #aaccff
+rect 1294 142 4 4 #ffeebb
+rect 554 173 4 4 #ffeebb after 2200ms to 554 173 4 4 #1a2440 over 700ms to 554 173 4 4 #ffeebb over 700ms
+rect 1360 535 5 5 #88aaff
+rect 452 446 4 4 #ffeebb
+rect 1351 497 4 4 #ffffff
+rect 882 243 4 4 #dddddd
+rect 761 225 5 5 #aaccff
+rect 646 185 4 4 #ffeebb
+rect 1188 190 4 4 #dddddd
+rect 385 469 3 3 #dddddd
+rect 522 324 3 3 #88aaff after 3100ms to 522 324 3 3 #1a2440 over 700ms to 522 324 3 3 #88aaff over 700ms
+rect 470 206 4 4 #ffeebb
+rect 1390 237 5 5 #ffeebb
+rect 1313 423 6 6 #ffffff
+rect 536 224 4 4 #ffeebb
+rect 480 453 4 4 #ffffff
+rect 1160 198 3 3 #ffffff
+rect 1004 162 6 6 #88aaff
+rect 874 448 6 6 #aaccff
+rect 944 451 6 6 #ffffff after 4000ms to 944 451 6 6 #1a2440 over 700ms to 944 451 6 6 #ffffff over 700ms
+rect 1391 310 6 6 #ffffff
+rect 619 346 5 5 #88aaff
+rect 1005 423 5 5 #ffeebb
+rect 671 167 6 6 #ffffff
+rect 1329 469 5 5 #ffffff
+rect 520 535 4 4 #dddddd
+rect 1413 193 4 4 #88aaff
+rect 1063 220 5 5 #ffffff
+rect 586 478 5 5 #dddddd after 4900ms to 586 478 5 5 #1a2440 over 700ms to 586 478 5 5 #dddddd over 700ms
+path M 1085 390 C 1085 338 1128 295 1180 295 C 1232 295 1275 338 1275 390 C 1275 442 1232 485 1180 485 C 1128 485 1085 442 1085 390 Z fill #4466aa
+path M 1144 358 C 1144 320 1174 290 1212 290 C 1250 290 1280 320 1280 358 C 1280 396 1250 426 1212 426 C 1174 426 1144 396 1144 358 Z fill #5b83c4
+rect 1060 268 64 7 #33ff66
+rect 1060 268 7 64 #33ff66
+rect 1236 268 64 7 #33ff66
+rect 1293 268 7 64 #33ff66
+rect 1060 505 64 7 #33ff66
+rect 1060 448 7 64 #33ff66
+rect 1236 505 64 7 #33ff66
+rect 1293 448 7 64 #33ff66
+rect 366 112 5 436 #33ff66 after 500ms to 1452 112 5 436 #33ff66 over 4200ms
+rect 398 516 9 9 #ffcc66 after 800ms to 1398 138 9 9 #ffcc66 over 5200ms
+
+# --- right column: system status ---
+text 1490 96 "SYSTEM STATUS" 3 #ff9900
+text 1490 148 "CORE 92" 2 #ffcc99
+rect 1660 148 240 20 #1a1206
+rect 1660 148 221 20 #ff9900
+text 1490 200 "ENGINE 88" 2 #ffcc99
+rect 1660 200 240 20 #1a1206
+rect 1660 200 211 20 #ffcc66
+text 1490 252 "SHIELDS 98" 2 #ffcc99
+rect 1660 252 240 20 #1a1206
+rect 1660 252 235 20 #33ff66
+text 1490 304 "WEAPONS 54" 2 #ffcc99
+rect 1660 304 240 20 #1a1206
+rect 1660 304 130 20 #cc99cc
+text 1490 356 "SENSORS 76" 2 #ffcc99
+rect 1660 356 240 20 #1a1206
+rect 1660 356 182 20 #9999ff
+text 1490 408 "COMMS 100" 2 #ffcc99
+rect 1660 408 240 20 #1a1206
+rect 1660 408 240 20 #ffcc99
+
+# --- warp core gauge + engineering numbers ---
+text 1490 472 "WARP CORE" 2 #ffcc99
+rect 1490 500 130 400 #33270f
+rect 1500 870 110 20 #ffcc66 after 300ms to 1500 520 110 370 #ffcc66 over 3000ms
+text 1490 912 "PWR" 2 #9999cc
+text 1660 500 "8472" 3 #ffcc66
+text 1800 500 "011" 3 #9999cc
+text 1660 566 "593" 3 #ffcc99
+text 1800 566 "88" 3 #cc99cc
+text 1660 632 "1204" 3 #9999ff
+text 1800 632 "66" 3 #ff9900
+text 1660 698 "3077" 3 #ffcc66
+text 1800 698 "41" 3 #9999cc
+text 1660 764 "990" 3 #ffcc99
+text 1800 764 "128" 3 #cc99cc
+text 1660 830 "55" 3 #9999ff
+text 1800 830 "7741" 3 #ff9900
+
+# --- lower stage: operations data cascade ---
+text 360 584 "OPERATIONS DATA" 3 #ff9900
+text 360 648 "47" 3 #ffcc99
+text 545 648 "021" 3 #cc99cc
+text 730 648 "88" 3 #9999ff
+text 915 648 "102" 3 #ff9900
+text 1100 648 "77" 3 #ffcc66
+text 1285 648 "309" 3 #9999cc
+text 360 710 "55" 3 #ffcc99
+text 545 710 "901" 3 #cc99cc
+text 730 710 "12" 3 #9999ff
+text 915 710 "633" 3 #ff9900
+text 1100 710 "204" 3 #ffcc66
+text 1285 710 "19" 3 #9999cc
+text 360 772 "7741" 3 #ffcc99
+text 545 772 "36" 3 #cc99cc
+text 730 772 "508" 3 #9999ff
+text 915 772 "92" 3 #ff9900
+text 1100 772 "1107" 3 #ffcc66
+text 1285 772 "64" 3 #9999cc
+text 360 834 "28" 3 #ffcc99
+text 545 834 "445" 3 #cc99cc
+text 730 834 "831" 3 #9999ff
+text 915 834 "07" 3 #ff9900
+text 1100 834 "196" 3 #ffcc66
+text 1285 834 "660" 3 #9999cc
+rect 360 906 1100 10 #9977cc
+
+# --- bottom command pill + footer segments ---
+rect 360 940 1560 56 #ffcc99
+text 388 954 "ALL SYSTEMS NOMINAL - 1 BRIDGE  2 SYS  R ALERT  D DATA  Q QUIT" 3 #000000
+rect 0 1032 234 48 #ff9900
+rect 242 1032 234 48 #9999cc
+rect 484 1032 234 48 #ffcc99
+rect 726 1032 234 48 #cc99cc
+rect 968 1032 234 48 #9999ff
+rect 1210 1032 234 48 #ffcc66
+rect 1452 1032 234 48 #cc6666
+rect 1694 1032 234 48 #9977cc
+
+# --- systems overlay (key 2) ---
+rect 360 90 1560 850 #050510 when systems
+rect 360 90 1560 10 #9999cc when systems
+text 400 126 "SYSTEMS DIAGNOSTIC" 5 #9999cc when systems
+text 400 232 "PROPULSION" 3 #ffcc99 when systems
+rect 880 232 960 34 #1a1206 when systems
+rect 880 232 864 34 #ff9900 when systems
+text 400 334 "LIFE SUPPORT" 3 #ffcc99 when systems
+rect 880 334 960 34 #1a1206 when systems
+rect 880 334 941 34 #33ff66 when systems
+text 400 436 "WEAPONS" 3 #ffcc99 when systems
+rect 880 436 960 34 #1a1206 when systems
+rect 880 436 480 34 #cc99cc when systems
+text 400 538 "SENSORS" 3 #ffcc99 when systems
+rect 880 538 960 34 #1a1206 when systems
+rect 880 538 768 34 #9999ff when systems
+text 400 640 "COMMS" 3 #ffcc99 when systems
+rect 880 640 960 34 #1a1206 when systems
+rect 880 640 960 34 #ffcc99 when systems
+text 400 742 "TRANSPORT" 3 #ffcc99 when systems
+rect 880 742 960 34 #1a1206 when systems
+rect 880 742 614 34 #ffcc66 when systems
+text 400 862 "ALL DECKS REPORT READY" 3 #ff9900 when systems
+
+# --- data overlay (key D) ---
+rect 1300 90 620 850 #0a0610 when data
+rect 1300 90 620 10 #cc99cc when data
+text 1332 126 "DATA LINK" 4 #cc99cc when data
+text 1332 210 "8472" 3 #ffcc66 when data
+text 1632 210 "011" 3 #9999cc when data
+text 1332 268 "593" 3 #ffcc99 when data
+text 1632 268 "88" 3 #cc99cc when data
+text 1332 326 "1204" 3 #9999ff when data
+text 1632 326 "66" 3 #ff9900 when data
+text 1332 384 "3077" 3 #ffcc66 when data
+text 1632 384 "41" 3 #9999cc when data
+text 1332 442 "990" 3 #ffcc99 when data
+text 1632 442 "128" 3 #cc99cc when data
+text 1332 500 "55" 3 #9999ff when data
+text 1632 500 "7741" 3 #ff9900 when data
+text 1332 558 "902" 3 #ffcc66 when data
+text 1632 558 "17" 3 #9999cc when data
+text 1332 616 "446" 3 #ffcc99 when data
+text 1632 616 "73" 3 #cc99cc when data
+text 1332 674 "610" 3 #9999ff when data
+text 1632 674 "285" 3 #ff9900 when data
+text 1332 732 "04" 3 #ffcc66 when data
+text 1632 732 "199" 3 #9999cc when data
+text 1332 790 "520" 3 #ffcc99 when data
+text 1632 790 "88" 3 #cc99cc when data
+text 1332 848 "1347" 3 #9999ff when data
+text 1632 848 "62" 3 #ff9900 when data
+
+# --- red alert overlay (key R) ---
+rect 0 0 1920 44 #ff0000 when alert
+rect 0 1036 1920 44 #ff0000 when alert
+rect 344 90 16 850 #ff0000 when alert
+rect 1904 90 16 850 #ff0000 when alert
+rect 710 470 500 130 #ff0000 when alert
+text 822 508 "RED ALERT" 7 #000000 when alert
+
+# --- bindings ---
+on key 1 set systems false
+on key 2 set systems true
+on key r set alert true
+on key s set alert false
+on key d set data true
+on key b set data false
+on key q quit

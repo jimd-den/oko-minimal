@@ -15,6 +15,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::time::{Duration, Instant, SystemTime};
 
+use crate::core::frame::Frame;
 use crate::core::session::Effect;
 
 use super::keys::Decoder;
@@ -50,13 +51,20 @@ pub fn run(path: &Path) -> io::Result<()> {
     if let Some(text) = read(path) {
         load(&mut runtime, &text);
         origin = Instant::now();
-        present(&mut out, &runtime)?;
     }
 
     write!(out, "{ALTERNATE}{HIDE}")?;
     out.flush()?;
     terminal.set_raw()?;
     let _ = runtime.take_display();
+
+    // The panel is painted after the display is taken, not before: the
+    // alternate screen starts blank, so a frame painted on the main
+    // screen is a frame nobody sees - a motionless panel painted there
+    // and never repainted stayed invisible. The frame the screen is
+    // showing is remembered, so later paintings send only the change.
+    let mut previous: Option<Frame> = None;
+    present(&mut out, &runtime, &mut previous)?;
 
     let mut buffer = [0u8; 64];
     let mut running = true;
@@ -67,7 +75,7 @@ pub fn run(path: &Path) -> io::Result<()> {
             while let Some(event) = decoder.event() {
                 match runtime.event(event) {
                     Some(Effect::ReclaimDisplay) => running = false,
-                    Some(Effect::Repaint) => present(&mut out, &runtime)?,
+                    Some(Effect::Repaint) => present(&mut out, &runtime, &mut previous)?,
                     Some(Effect::Deliver { .. }) | None => {}
                 }
             }
@@ -78,11 +86,11 @@ pub fn run(path: &Path) -> io::Result<()> {
             if let Some(text) = read(path) {
                 load(&mut runtime, &text);
                 origin = Instant::now();
-                present(&mut out, &runtime)?;
+                present(&mut out, &runtime, &mut previous)?;
             }
         }
         if runtime.tick(origin.elapsed().as_millis() as u64) {
-            present(&mut out, &runtime)?;
+            present(&mut out, &runtime, &mut previous)?;
         }
     }
 
@@ -101,12 +109,22 @@ fn load(runtime: &mut Runtime, text: &str) {
     }
 }
 
-/// Put the frame on the screen.
-fn present(out: &mut impl Write, runtime: &Runtime) -> io::Result<()> {
+/// Put the frame on the screen: the whole frame the first time, and
+/// only what changed from the frame before it after that.
+fn present(
+    out: &mut impl Write,
+    runtime: &Runtime,
+    previous: &mut Option<Frame>,
+) -> io::Result<()> {
     let Some(frame) = runtime.frame() else {
         return Ok(());
     };
-    out.write_all(presenter::screen(frame).as_bytes())?;
+    let bytes = match previous {
+        Some(before) => presenter::screen_update(before, frame),
+        None => presenter::screen(frame),
+    };
+    *previous = Some(frame.clone());
+    out.write_all(bytes.as_bytes())?;
     out.flush()
 }
 
