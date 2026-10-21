@@ -1,138 +1,178 @@
-//! The state of one translation: open elements, the current offset, and the
-//! document being written.
+//! Turning an export's tree into a document and a report of what was left out.
 //!
-//! The translator is a small stack machine. An element either writes a
-//! directive, opens a frame that offsets its children, or is refused. Nothing
-//! here reads the clock or the filesystem, so the whole authoring bridge is a
-//! pure function from SVG text to document text.
+//! The translator walks the tree the scanner built. It draws what it can and
+//! records what it cannot, with the line the shape was on, so a person reading
+//! the report can find it in the file they exported.
 
 use super::emit::Writer;
+use super::elements;
 use super::error::SvgError;
-use super::xml::{Element, Event};
-use super::{paint, shapes, text, values};
+use super::outcome::Outcome;
+use super::paint::Inherited;
+use super::shapes;
+use super::transform::{self, Transform};
+use super::values;
+use super::xml::{Element, Node};
+use super::{Skipped, Translation};
 
-#[derive(Default)]
-pub struct Translator {
-    document: Writer,
-    stack: Vec<Frame>,
-    offset: (i32, i32),
-    /// The styles of the open `<text>` and `<tspan>` elements, outermost first.
-    styles: Vec<text::Style>,
+/// What an element hands to the elements inside it.
+pub(super) struct Scope {
+    /// Where the origin of this element sits, after the transforms above it.
+    pub(super) offset: (i32, i32),
+    /// The paints the ancestors stated.
+    pub(super) paint: Inherited,
+    /// The style of the text this element is inside, if any.
+    pub(super) style: Option<super::text::Style>,
+    /// The colour of the text this element is inside, if any.
+    pub(super) colour: Option<crate::core::geom::Rgba>,
 }
 
-struct Frame {
-    name: String,
-    offset: (i32, i32),
-    line: usize,
+impl Scope {
+    /// A scope with no text in it.
+    pub(super) fn plain(&self) -> Scope {
+        Scope {
+            offset: self.offset,
+            paint: self.paint.clone(),
+            style: None,
+            colour: None,
+        }
+    }
+}
+
+/// A translator walks an export and writes a document.
+#[derive(Default)]
+pub struct Translator {
+    pub(super) document: Writer,
+    pub(super) skipped: Vec<Skipped>,
 }
 
 impl Translator {
-    pub fn run(mut self, events: Vec<Event>) -> Result<String, SvgError> {
-        for event in events {
-            match event {
-                Event::Start(element) => self.start(element)?,
-                Event::End { name, line } => self.end(&name, line)?,
-                Event::Text { content, line } => self.label(&content, line)?,
-            }
-        }
-        if let Some(frame) = self.stack.last() {
-            return Err(SvgError::new(
-                frame.line,
-                format!("`{}` is not closed", frame.name),
-            ));
-        }
-        Ok(self.document.into_text())
+    /// Translate an export into a document and a report.
+    pub fn run(mut self, root: &Element) -> Result<Translation, SvgError> {
+        let scope = Scope {
+            offset: (0, 0),
+            paint: Inherited::default(),
+            style: None,
+            colour: None,
+        };
+        self.element(root, &scope)?;
+        Ok(Translation {
+            document: self.document.into_text(),
+            skipped: self.skipped,
+        })
     }
 
-    fn start(&mut self, element: Element) -> Result<(), SvgError> {
-        paint::require_opaque(&element)?;
-        let local = self.local_offset(&element)?;
-        let at = (self.offset.0 + local.0, self.offset.1 + local.1);
-
-        match element.name.as_str() {
-            "svg" | "g" => paint::plain_group(&element)?,
-            "rect" => shapes::rect(&mut self.document, &element, at)?,
-            "line" => shapes::line(&mut self.document, &element, at)?,
-            "polyline" => shapes::polyline(&mut self.document, &element, at)?,
-            "path" => shapes::path(&mut self.document, &element, at)?,
-            "text" => {
-                // A self-closing text has no content, and no style to leave behind.
-                if !element.closed {
-                    self.styles.push(text::Style::of_text(&element, at)?);
-                }
-            }
-            "tspan" => {
-                let Some(parent) = self.styles.last() else {
-                    return Err(element.error("a `<tspan>` must be inside a `<text>`"));
-                };
-                if !element.closed {
-                    self.styles.push(parent.of_span(&element, local)?);
-                }
-            }
+    /// Draw one element and everything inside it.
+    fn element(&mut self, element: &Element, scope: &Scope) -> Result<(), SvgError> {
+        let name = element.name.as_str();
+        if elements::is_structural(name) {
+            return Ok(());
+        }
+        match name {
+            "svg" | "g" => self.group(element, scope),
+            "text" => self.text(element, scope),
+            "tspan" => self.span(element, scope),
+            "rect" | "line" | "polyline" | "path" => self.shape(element, scope),
             other => {
-                return Err(element.error(format!(
-                    "`{other}` is not supported; use svg, g, rect, line, polyline, path or text"
-                )));
+                self.skip(
+                    element.line,
+                    format!("`<{other}>` is not an element this console draws"),
+                );
+                Ok(())
             }
         }
-
-        if !element.closed {
-            self.stack.push(Frame {
-                name: element.name,
-                offset: self.offset,
-                line: element.line,
-            });
-            self.offset = at;
-        }
-        Ok(())
     }
 
-    fn end(&mut self, name: &str, line: usize) -> Result<(), SvgError> {
-        let Some(frame) = self.stack.pop() else {
-            return Err(SvgError::new(line, format!("unexpected closing `{name}`")));
-        };
-        if frame.name != name {
-            return Err(SvgError::new(
-                line,
-                format!("`{name}` closes `{}`", frame.name),
-            ));
-        }
-        if matches!(name, "text" | "tspan") {
-            self.styles.pop();
-        }
-        self.offset = frame.offset;
-        Ok(())
-    }
-
-    /// A run of characters becomes one label, drawn where its element sits.
-    fn label(&mut self, content: &str, line: usize) -> Result<(), SvgError> {
-        let Some(style) = self.styles.last() else {
-            return Err(SvgError::new(
-                line,
-                "text is only supported inside a `<text>` or a `<tspan>`",
-            ));
-        };
-        let Some(label) = text::label(content, line)? else {
+    /// A group: the paint and the offset it hands down.
+    fn group(&mut self, element: &Element, scope: &Scope) -> Result<(), SvgError> {
+        let Some(at) = self.at(element, scope)? else {
             return Ok(());
         };
-        text::emit(&mut self.document, style, &label, line)
+        self.unapplied(element);
+        let mut inner = scope.plain();
+        inner.offset = at;
+        inner.paint = scope.paint.inherit(element);
+        self.children(element, &inner)
     }
 
-    fn local_offset(&self, element: &Element) -> Result<(i32, i32), SvgError> {
-        let mut offset = (0, 0);
+    /// One shape: a rectangle, a line, a polyline or a path.
+    fn shape(&mut self, element: &Element, scope: &Scope) -> Result<(), SvgError> {
+        let Some(at) = self.at(element, scope)? else {
+            return Ok(());
+        };
+        let fill = scope.paint.outline_fill_of(element);
+        let stroke = scope.paint.stroke_of(element);
+        let outcome = match element.name.as_str() {
+            "rect" => shapes::rect(&mut self.document, element, at, &fill)?,
+            "line" => shapes::line(&mut self.document, element, at, &stroke)?,
+            "polyline" => shapes::polyline(&mut self.document, element, at, &fill, &stroke)?,
+            _ => shapes::path(&mut self.document, element, at, &fill, &stroke)?,
+        };
+        if let Outcome::Undrawn(reason) = outcome {
+            self.skip(element.line, reason);
+        }
+        Ok(())
+    }
+
+    /// The children of an element.
+    pub(super) fn children(&mut self, element: &Element, scope: &Scope) -> Result<(), SvgError> {
+        for child in &element.children {
+            match child {
+                Node::Element(child) => self.element(child, scope)?,
+                Node::Text(run) => self.run(run, scope)?,
+            }
+        }
+        Ok(())
+    }
+
+    /// Where an element's own transform puts its origin.
+    pub(super) fn at(&self, element: &Element, scope: &Scope) -> Result<Option<(i32, i32)>, SvgError> {
+        let Some(shift) = self.shift(element)? else {
+            return Ok(None);
+        };
+        Ok(Some((scope.offset.0 + shift.0, scope.offset.1 + shift.1)))
+    }
+
+    /// The shift an element's own transform makes, if it makes one we can draw.
+    pub(super) fn shift(&mut self, element: &Element) -> Result<Option<(i32, i32)>, SvgError> {
+        let mut shift = (0, 0);
         if element.name == "svg"
             && let Some(view) = element.attribute("viewBox")
         {
             let numbers = values::numbers(view, element.line)?;
             if numbers.len() != 4 {
-                return Err(element.error("viewBox needs four numbers"));
+                return Err(element.error("a viewBox needs four numbers"));
             }
-            offset = (-numbers[0], -numbers[1]);
+            shift = (-numbers[0], -numbers[1]);
         }
-        if let Some(transform) = element.attribute("transform") {
-            let (x, y) = values::translate(transform, element.line)?;
-            offset = (offset.0 + x, offset.1 + y);
+        let Some(word) = element.attribute("transform") else {
+            return Ok(Some(shift));
+        };
+        match transform::transform(word) {
+            Transform::Shift(x, y) => Ok(Some((shift.0 + x, shift.1 + y))),
+            Transform::Undrawn(reason) => {
+                self.skip(element.line, reason);
+                Ok(None)
+            }
         }
-        Ok(offset)
+    }
+
+    /// The references an element carries that this console does not apply.
+    fn unapplied(&mut self, element: &Element) {
+        for name in ["clip-path", "mask", "filter"] {
+            if let Some(word) = element.attribute(name) {
+                self.skip(
+                    element.line,
+                    format!(
+                        "the {name} `{word}` is not applied, so this element may show more than the source drew"
+                    ),
+                );
+            }
+        }
+    }
+
+    /// Record that a shape was left out, and why.
+    pub(super) fn skip(&mut self, line: usize, reason: String) {
+        self.skipped.push(Skipped { line, reason });
     }
 }

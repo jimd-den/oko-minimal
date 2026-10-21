@@ -1,125 +1,141 @@
-//! Reading the stream of tags an SVG export contains.
+//! Reading the tree an export writes.
 //!
 //! This is not an XML parser. It reads elements, attributes, comments, the XML
-//! declaration and runs of character data, and it refuses doctypes and
-//! entities. That is the whole input surface of the translator, and keeping the
-//! surface this small is what makes "bounded" a property of the code rather
-//! than a promise.
+//! declaration and runs of character data, and it refuses a declaration. That
+//! is the whole input surface of the translator, and keeping the surface this
+//! small is what makes "bounded" a property of the code rather than a promise.
+//!
+//! The tree it builds is what the translator walks. Building it first is what
+//! lets an element be skipped with the contents it holds: a `<defs>` is skipped
+//! as a whole, and what is inside it never becomes a shape.
 //!
 //! Every limit is a refusal, never a truncation: too many elements, too many
 //! attributes, an oversized value, or an unterminated construct stops with a
 //! line number.
 
 use super::cursor::Cursor;
+use super::entity;
 use super::error::SvgError;
-use super::tag;
-use super::xml::{Event, MAX_ELEMENTS};
+use super::tag::{self, Tag};
+use super::xml::{Element, Node, Text, MAX_ELEMENTS};
 
-pub fn events(source: &str) -> Result<Vec<Event>, SvgError> {
-    let mut cursor = Cursor::new(source);
-    let mut events = Vec::new();
+/// The tree an export writes, with its root element.
+pub fn document(source: &str) -> Result<Element, SvgError> {
+    let mut reader = Reader {
+        cursor: Cursor::new(source),
+        elements: 0,
+    };
+    reader.skip_noise()?;
+    let root = reader.element()?;
+    reader.skip_noise()?;
+    if reader.cursor.byte().is_some() {
+        return Err(reader.cursor.error("the export has content after its root element"));
+    }
+    Ok(root)
+}
 
-    while let Some(byte) = cursor.byte() {
-        let event = if byte == b'<' {
-            header(&mut cursor)?
-        } else {
-            text(&mut cursor)?
-        };
-        if let Some(event) = event {
-            if events.len() >= MAX_ELEMENTS {
-                return Err(SvgError::new(
-                    cursor.line,
-                    "the document has too many elements",
-                ));
+/// A reader over one export.
+struct Reader<'a> {
+    cursor: Cursor<'a>,
+    elements: usize,
+}
+
+impl Reader<'_> {
+    /// Read one element and everything inside it.
+    fn element(&mut self) -> Result<Element, SvgError> {
+        let (name, attributes, line, empty) = match tag::read(&mut self.cursor)? {
+            Tag::Open {
+                name,
+                attributes,
+                line,
+                empty,
+            } => (name, attributes, line, empty),
+            Tag::Close { name, line } => {
+                return Err(SvgError::new(line, format!("`{name}` closes nothing")));
             }
-            events.push(event);
+        };
+        self.elements += 1;
+        if self.elements > MAX_ELEMENTS {
+            return Err(self.cursor.error("the export has too many elements"));
+        }
+        let mut element = Element {
+            name,
+            attributes,
+            line,
+            children: Vec::new(),
+        };
+        if empty {
+            return Ok(element);
+        }
+        loop {
+            match self.cursor.byte() {
+                None => {
+                    return Err(SvgError::new(
+                        line,
+                        format!("`{}` is not closed", element.name),
+                    ));
+                }
+                Some(b'<') => {
+                    if self.cursor.begins("</") {
+                        let closed = tag::read(&mut self.cursor)?;
+                        let Tag::Close { name, line } = closed else {
+                            unreachable!("a closing tag was read");
+                        };
+                        if name != element.name {
+                            return Err(SvgError::new(
+                                line,
+                                format!("`{name}` closes `{}`", element.name),
+                            ));
+                        }
+                        return Ok(element);
+                    }
+                    let child = self.element()?;
+                    element.children.push(Node::Element(child));
+                }
+                Some(_) => {
+                    let (content, line) = self.text()?;
+                    if content.trim().is_empty() {
+                        continue;
+                    }
+                    element.children.push(Node::Text(Text { content, line }));
+                }
+            }
         }
     }
 
-    Ok(events)
-}
-
-/// Comments and the XML declaration carry no meaning for a panel, and are
-/// skipped. Everything else that begins with `<` is a tag.
-fn header(cursor: &mut Cursor<'_>) -> Result<Option<Event>, SvgError> {
-    if cursor.begins("<!--") {
-        cursor.skip_past("-->", "an unterminated comment")?;
-        return Ok(None);
-    }
-    if cursor.begins("<?") {
-        cursor.skip_past("?>", "an unterminated processing instruction")?;
-        return Ok(None);
-    }
-    if cursor.begins("<!") {
-        return Err(cursor.error("declarations and entities are not allowed"));
-    }
-    tag::read(cursor)
-}
-
-/// A run of character data.
-///
-/// Whitespace between elements carries nothing, so it stays ignored. A run
-/// with a word in it is delivered as it was written: entities are refused
-/// rather than decoded, because a decoded `&amp;` would be text the reader
-/// never saw.
-fn text(cursor: &mut Cursor<'_>) -> Result<Option<Event>, SvgError> {
-    let source = cursor.source();
-    let rest = &source.as_bytes()[cursor.at..];
-    let end = cursor.at
-        + rest
-            .iter()
-            .position(|&byte| byte == b'<')
-            .unwrap_or(rest.len());
-    let line = cursor.line;
-    let content = source[cursor.at..end].to_string();
-    cursor.skip_to(end);
-
-    if content.contains('&') {
-        return Err(SvgError::new(line, "entities are not allowed"));
-    }
-    if content.trim().is_empty() {
-        return Ok(None);
-    }
-    Ok(Some(Event::Text { content, line }))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_declaration_and_comments_are_skipped() {
-        let events = events("<?xml version=\"1.0\"?><!-- a note --><g></g>").expect("a group");
-
-        assert_eq!(events.len(), 2);
+    /// A run of character data, with its entities decoded.
+    fn text(&mut self) -> Result<(String, usize), SvgError> {
+        let source = self.cursor.source();
+        let rest = &source.as_bytes()[self.cursor.at..];
+        let end = self.cursor.at
+            + rest
+                .iter()
+                .position(|&byte| byte == b'<')
+                .unwrap_or(rest.len());
+        let line = self.cursor.line;
+        let content = source[self.cursor.at..end].to_string();
+        self.cursor.skip_to(end);
+        Ok((entity::decode(&content, line)?, line))
     }
 
-    #[test]
-    fn a_doctype_is_refused() {
-        let error = events("<!DOCTYPE svg>").expect_err("a doctype");
-
-        assert!(error.problem.contains("declarations"));
-    }
-
-    #[test]
-    fn a_run_of_text_is_delivered() {
-        let events = events("<text>hello</text>").expect("a label");
-
-        assert_eq!(events.len(), 3);
-        assert_eq!(
-            events[1],
-            Event::Text {
-                content: "hello".to_string(),
-                line: 1,
+    /// Skip the whitespace, the comments and the declarations around a tag.
+    fn skip_noise(&mut self) -> Result<(), SvgError> {
+        loop {
+            self.cursor.whitespace();
+            if self.cursor.begins("<!--") {
+                self.cursor
+                    .skip_past("-->", "an unterminated comment")?;
+                continue;
             }
-        );
-    }
-
-    #[test]
-    fn an_entity_in_a_run_is_refused() {
-        let error = events("<text>a&amp;b</text>").expect_err("an entity");
-
-        assert_eq!(error.line, 1);
-        assert!(error.problem.contains("entities"));
+            if self.cursor.begins("<?") {
+                self.cursor
+                    .skip_past("?>", "an unterminated processing instruction")?;
+                continue;
+            }
+            if self.cursor.begins("<!") {
+                return Err(self.cursor.error("a declaration is not allowed"));
+            }
+            return Ok(());
+        }
     }
 }

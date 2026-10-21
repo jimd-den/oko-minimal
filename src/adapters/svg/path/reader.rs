@@ -6,6 +6,7 @@
 
 use super::super::error::SvgError;
 
+/// The largest coordinate a path may name.
 const MAX_COORDINATE: f64 = 1_000_000.0;
 
 pub(super) struct Reader<'a> {
@@ -87,25 +88,5 @@ impl<'a> Reader<'a> {
 
     pub(super) fn pair(&mut self) -> Result<(f64, f64), SvgError> {
         Ok((self.number()?, self.number()?))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_negative_decimal_is_one_number() {
-        let mut reader = Reader::new("-2.5, 4", 1);
-
-        assert_eq!(reader.pair(), Ok((-2.5, 4.0)));
-    }
-
-    #[test]
-    fn a_command_letter_is_consumed_once() {
-        let mut reader = Reader::new("L 4", 1);
-
-        assert_eq!(reader.command(), Some(b'L'));
-        assert_eq!(reader.peek(), Some(b' '));
     }
 }

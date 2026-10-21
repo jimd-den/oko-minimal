@@ -1,36 +1,50 @@
 //! The bounded path grammar: `d` attributes without curves.
 //!
 //! SVG paths can describe anything. A panel is made of straight edges, so this
-//! module understands exactly `M`, `L`, `H`, `V` and `Z`, absolute and relative,
-//! and refuses every curve by name. A refusal with a line number is a design
-//! constraint the author can see; a guessed curve is a pixel nobody can explain.
+//! module understands exactly `M`, `L`, `H`, `V` and `Z`, absolute and
+//! relative. A path that uses anything else is not refused: it is reported as
+//! undrawable, with the command named, and the shapes around it still draw.
 //!
 //! One subpath is one outline. Points are quantised to whole pixels here,
 //! because the panel format has no subpixel geometry.
 
 mod reader;
+#[cfg(test)]
+mod tests;
 
 use super::error::SvgError;
 use crate::core::geom::Point;
 use reader::Reader;
 
 pub const MAX_POINTS: usize = 4096;
+
+/// The largest coordinate a path may name.
 const MAX_COORDINATE: f64 = 1_000_000.0;
 
+/// What a path turned out to be.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Path {
+    /// The straight edges of one shape.
+    Edges(Outline),
+    /// A path this console cannot draw, and why.
+    Undrawn(String),
+}
+
+/// The straight edges of one shape.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Outline {
     pub points: Vec<Point>,
     pub closed: bool,
 }
 
-pub fn outline(source: &str, line: usize) -> Result<Outline, SvgError> {
+/// Read the edges of a path.
+pub fn outline(source: &str, line: usize) -> Result<Path, SvgError> {
     let mut reader = Reader::new(source, line);
-    let mut points = Vec::new();
+    let mut points: Vec<Point> = Vec::new();
     let mut current = (0.0, 0.0);
     let mut origin = (0.0, 0.0);
     let mut command = None;
     let mut closed = false;
-    let mut started = false;
 
     while reader.peek().is_some() {
         reader.separators();
@@ -43,31 +57,25 @@ pub fn outline(source: &str, line: usize) -> Result<Outline, SvgError> {
                 byte,
                 b'M' | b'm' | b'L' | b'l' | b'H' | b'h' | b'V' | b'v' | b'Z' | b'z'
             ) {
-                return Err(SvgError::new(
-                    line,
-                    format!(
-                        "path command `{}` is not supported; use M, L, H, V, Z",
-                        byte as char
-                    ),
-                ));
+                return Ok(Path::Undrawn(format!(
+                    "the path uses `{letter}`, which this console does not draw",
+                    letter = byte as char
+                )));
             }
             command = Some(byte);
         } else if command.is_none() {
             return Err(SvgError::new(line, "a path must start with a command"));
         }
 
-        let Some(step) = command else {
-            return Err(SvgError::new(line, "a path must start with a command"));
-        };
+        let step = command.expect("a command was read above");
         match step {
             b'M' | b'm' => {
-                if started {
-                    return Err(SvgError::new(
-                        line,
-                        "multiple subpaths are not supported; use one path per shape",
+                if !points.is_empty() {
+                    return Ok(Path::Undrawn(
+                        "the path has more than one shape, which this console does not draw"
+                            .to_string(),
                     ));
                 }
-                started = true;
                 let (x, y) = reader.pair()?;
                 current = if step == b'm' {
                     (current.0 + x, current.1 + y)
@@ -109,7 +117,12 @@ pub fn outline(source: &str, line: usize) -> Result<Outline, SvgError> {
     if points.is_empty() {
         return Err(SvgError::new(line, "a path needs at least one point"));
     }
-    Ok(Outline { points, closed })
+    // A closed path that returns to its start says so twice: the `Z` already
+    // closes it, and the last edge is the one the writer meant.
+    if closed && points.len() > 1 && points[points.len() - 1] == points[0] {
+        points.pop();
+    }
+    Ok(Path::Edges(Outline { points, closed }))
 }
 
 fn push(points: &mut Vec<Point>, (x, y): (f64, f64), line: usize) -> Result<(), SvgError> {
@@ -128,40 +141,4 @@ fn round(value: f64, line: usize) -> Result<i32, SvgError> {
         ));
     }
     Ok(value.round() as i32)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn absolute_commands_become_points() {
-        let outline = outline("M2 2 H8 V6 H2 Z", 1).expect("a rectangle");
-
-        assert_eq!(
-            outline.points,
-            [
-                Point::new(2, 2),
-                Point::new(8, 2),
-                Point::new(8, 6),
-                Point::new(2, 6),
-            ]
-        );
-        assert!(outline.closed);
-    }
-
-    #[test]
-    fn relative_commands_accumulate() {
-        let outline = outline("m 2 2 l 6 0 v 4 h -6 z", 1).expect("a rectangle");
-
-        assert_eq!(outline.points[3], Point::new(2, 6));
-    }
-
-    #[test]
-    fn a_curve_is_refused_by_name() {
-        let error = outline("M0 0 C 1 1 2 2 3 3", 4).expect_err("a curve");
-
-        assert_eq!(error.line, 4);
-        assert!(error.problem.contains("`C`"));
-    }
 }

@@ -2,13 +2,14 @@
 //!
 //! Most filled shapes in an instrument panel are rectangles, and the document
 //! format has a rectangle primitive. The translator accepts only an outline
-//! that really is the four corners of one. Anything else is refused by the
-//! caller rather than approximated by scan lines, because an approximation is
-//! a picture nobody can explain from the source.
+//! that really is the four corners of one. Anything else is left out and
+//! reported, because an approximation is a picture nobody can explain from the
+//! source.
 
 use super::path::Outline;
-use crate::core::geom::{Point, Rect};
+use crate::core::geom::Rect;
 
+/// The rectangle an outline draws, if it is one.
 pub fn from_outline(outline: &Outline) -> Option<Rect> {
     if !outline.closed || outline.points.len() != 4 {
         return None;
@@ -22,10 +23,12 @@ pub fn from_outline(outline: &Outline) -> Option<Rect> {
         return None;
     }
 
-    let on_corner = |point: &Point| {
+    let on_corner = |point: &crate::core::geom::Point| {
         (point.x == left || point.x == right) && (point.y == top || point.y == bottom)
     };
-    let adjacent = |a: &Point, b: &Point| a.x == b.x || a.y == b.y;
+    let adjacent = |a: &crate::core::geom::Point, b: &crate::core::geom::Point| {
+        a.x == b.x || a.y == b.y
+    };
     if !points.iter().all(on_corner) {
         return None;
     }
@@ -46,18 +49,24 @@ pub fn from_outline(outline: &Outline) -> Option<Rect> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapters::svg::path::outline;
+    use crate::adapters::svg::path;
 
     #[test]
     fn a_closed_four_corner_path_is_a_rectangle() {
-        let outline = outline("M2 2 H8 V6 H2 Z", 1).expect("a rectangle");
+        let outline = match path::outline("M2 2 H8 V6 H2 Z", 1).expect("a rectangle") {
+            path::Path::Edges(outline) => outline,
+            path::Path::Undrawn(_) => panic!("the path was not drawn"),
+        };
 
         assert_eq!(from_outline(&outline), Some(Rect::new(2, 2, 6, 4)));
     }
 
     #[test]
     fn an_open_path_is_not_a_rectangle() {
-        let outline = outline("M2 2 H8 V6 H2", 1).expect("an open path");
+        let outline = match path::outline("M2 2 H8 V6 H2", 1).expect("an open path") {
+            path::Path::Edges(outline) => outline,
+            path::Path::Undrawn(_) => panic!("the path was not drawn"),
+        };
 
         assert_eq!(from_outline(&outline), None);
     }

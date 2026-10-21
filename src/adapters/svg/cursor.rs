@@ -93,6 +93,10 @@ impl<'a> Cursor<'a> {
         Ok(self.source[start..self.at].to_string())
     }
 
+    /// A quoted attribute value, as it was written.
+    ///
+    /// The value is returned raw: the caller decodes the entities in it, so
+    /// that a value inside a skipped element costs nothing.
     pub fn quoted(&mut self) -> Result<String, SvgError> {
         let quote = match self.byte() {
             Some(quote @ (b'"' | b'\'')) => quote,
@@ -108,9 +112,6 @@ impl<'a> Cursor<'a> {
                 }
                 let value = self.source[start..self.at].to_string();
                 self.skip_to(self.at + 1);
-                if value.contains('&') {
-                    return Err(self.error("entities are not allowed"));
-                }
                 return Ok(value);
             }
             if byte == b'<' {

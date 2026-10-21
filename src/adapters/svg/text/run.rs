@@ -6,12 +6,20 @@
 //! double quote in a label, is refused rather than escaped.
 
 use super::super::emit::Writer;
+use super::super::error::SvgError;
 use super::Style;
 use crate::core::font;
 use crate::core::geom::Rgba;
 use crate::core::syntax::{MAX_COORDINATE, MAX_TEXT_CHARS};
 
-use super::super::error::SvgError;
+/// What a run of text turned out to be.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Label {
+    /// A label the document can hold.
+    Text(String),
+    /// A label the built-in font cannot draw, and why.
+    Undrawable(String),
+}
 
 /// The scale a label is drawn at: the font size measured in glyph heights.
 ///
@@ -24,11 +32,11 @@ pub fn scale(size: f64) -> u8 {
 
 /// The label a run of text becomes, or `None` when the run holds no word.
 ///
-/// The run is trimmed and its internal whitespace collapses to one space, so
-/// an exporter's line breaks do not reach the document. Every character must
-/// exist in the built-in font: a label the console cannot draw is refused
-/// here rather than painted as something else.
-pub fn label(run: &str, line: usize) -> Result<Option<String>, SvgError> {
+/// The run is trimmed and its internal whitespace collapses to one space, so an
+/// exporter's line breaks do not reach the document. Every character must exist
+/// in the built-in font: a label the console cannot draw is reported and left
+/// out, rather than painted as something else.
+pub fn label(run: &str, line: usize) -> Result<Option<Label>, SvgError> {
     let words: Vec<&str> = run.split_whitespace().collect();
     if words.is_empty() {
         return Ok(None);
@@ -40,21 +48,20 @@ pub fn label(run: &str, line: usize) -> Result<Option<String>, SvgError> {
             "a label may not contain a double quote",
         ));
     }
-    for character in label.chars() {
-        if !font::supports(character) {
-            return Err(SvgError::new(
-                line,
-                format!("`{character}` is not in the built-in font"),
-            ));
-        }
-    }
     if label.chars().count() > MAX_TEXT_CHARS {
         return Err(SvgError::new(
             line,
             format!("a label may hold at most {MAX_TEXT_CHARS} characters"),
         ));
     }
-    Ok(Some(label))
+    for character in label.chars() {
+        if !font::supports(character) {
+            return Ok(Some(Label::Undrawable(format!(
+                "the character `{character}` is not in the built-in font"
+            ))));
+        }
+    }
+    Ok(Some(Label::Text(label)))
 }
 
 /// Write one label as a document directive.
@@ -65,11 +72,9 @@ pub fn emit(
     document: &mut Writer,
     style: &Style,
     label: &str,
+    colour: Rgba,
     line: usize,
 ) -> Result<(), SvgError> {
-    let Some(colour) = style.colour else {
-        return Ok(());
-    };
     let scale = scale(style.size);
 
     // SVG places a label by its baseline; the document places it by its top
@@ -119,7 +124,10 @@ mod tests {
 
     #[test]
     fn a_label_trims_and_collapses_its_whitespace() {
-        assert_eq!(label("  A   B ", 1), Ok(Some("A B".to_string())));
+        assert_eq!(
+            label("  A   B ", 1),
+            Ok(Some(Label::Text("A B".to_string())))
+        );
     }
 
     #[test]
@@ -128,10 +136,19 @@ mod tests {
     }
 
     #[test]
-    fn a_character_outside_the_font_is_named() {
-        let error = label("A~", 3).expect_err("a tilde");
+    fn a_character_outside_the_font_is_left_out() {
+        assert_eq!(
+            label("A~", 3),
+            Ok(Some(Label::Undrawable(
+                "the character `~` is not in the built-in font".to_string()
+            )))
+        );
+    }
 
-        assert_eq!(error.line, 3);
-        assert!(error.problem.contains("`~`"));
+    #[test]
+    fn a_label_with_a_double_quote_is_refused() {
+        let error = label("A\"B", 1).expect_err("a quote");
+
+        assert!(error.problem.contains("double quote"));
     }
 }
