@@ -23,7 +23,8 @@ const NAMED: [(&str, char); 5] = [
 ///
 /// Contract: the five named entities and any numeric reference become the
 /// characters they name. An entity this translator does not know is an error
-/// naming it, with the line it was on.
+/// naming it, with the line it was on. A `&` with no `;` after it is an error
+/// too, because the export is not XML the translator can read.
 pub fn decode(text: &str, line: usize) -> Result<String, SvgError> {
     if !text.contains('&') {
         return Ok(text.to_string());
@@ -103,6 +104,21 @@ mod tests {
         let error = decode("a & b", 1).expect_err("a bare ampersand");
 
         assert!(error.problem.contains(';'));
+    }
+
+    /// A soft line break is written `&#10;` by a Figma export. It decodes to
+    /// a newline, and the label rules collapse whitespace, so the label the
+    /// console draws is still one line.
+    #[test]
+    fn a_soft_line_break_stays_one_line() {
+        let svg = "<svg><text x=\"1\" y=\"9\">Discounted&#10;</text></svg>";
+
+        assert_eq!(
+            crate::adapters::svg::translate(svg)
+                .expect("a broken label")
+                .document,
+            "text 1 2 \"Discounted\" 1 #000000\n"
+        );
     }
 
     #[test]

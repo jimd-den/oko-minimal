@@ -84,3 +84,44 @@ pub fn read(cursor: &mut Cursor<'_>) -> Result<Tag, SvgError> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The name and attributes of the first tag in a source.
+    fn start(source: &str) -> (String, Vec<(String, String)>) {
+        let mut cursor = Cursor::new(source);
+        match read(&mut cursor).expect("a tag") {
+            Tag::Open {
+                name, attributes, ..
+            } => (name, attributes),
+            Tag::Close { .. } => panic!("a start tag was expected"),
+        }
+    }
+
+    #[test]
+    fn a_tag_keeps_its_name_and_attributes() {
+        let (name, attributes) = start("<rect x=\"2\" y='3' fill=\"#000000\"/>");
+
+        assert_eq!(name, "rect");
+        assert!(attributes.contains(&("x".to_string(), "2".to_string())));
+        assert!(attributes.contains(&("fill".to_string(), "#000000".to_string())));
+    }
+
+    #[test]
+    fn an_entity_in_an_attribute_value_is_decoded() {
+        let (_, attributes) = start("<text font-family=\"&quot;Open Sans&quot;\"/>");
+
+        assert!(attributes.contains(&("font-family".to_string(), "\"Open Sans\"".to_string())));
+    }
+
+    #[test]
+    fn an_unknown_entity_in_an_attribute_value_is_refused_by_name() {
+        let mut cursor = Cursor::new("<text font-family=\"&nbsp;\"/>");
+
+        let error = read(&mut cursor).expect_err("an entity");
+
+        assert!(error.problem.contains("&nbsp;"));
+    }
+}

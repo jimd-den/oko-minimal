@@ -2,7 +2,9 @@
 //!
 //! All the low-level reading lives here: peeking, skipping, names, quoted
 //! values, line counting. The grammar above it never indexes a string, and this
-//! layer never decides what a tag means.
+//! layer never decides what a tag means. An entity reference is not refused
+//! here: this layer reads the bytes, and the layer that understands the
+//! grammar decodes them.
 
 use super::error::SvgError;
 use super::xml::MAX_VALUE;

@@ -47,10 +47,7 @@ fn report(path: &str, translation: &oko::adapters::svg::Translation) {
     if translation.skipped.is_empty() {
         return;
     }
-    eprintln!(
-        "{path}: {} shapes could not be drawn:",
-        translation.skipped.len()
-    );
+    eprintln!("{path}: what could not be drawn:");
     for skipped in &translation.skipped {
         eprintln!("  {path}:{}: {}", skipped.line, skipped.reason);
     }

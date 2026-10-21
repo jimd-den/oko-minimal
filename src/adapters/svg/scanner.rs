@@ -13,6 +13,9 @@
 //! attributes, an oversized value, or an unterminated construct stops with a
 //! line number.
 
+#[cfg(test)]
+mod tests;
+
 use super::cursor::Cursor;
 use super::entity;
 use super::error::SvgError;
