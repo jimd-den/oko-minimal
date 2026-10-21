@@ -83,6 +83,10 @@ fn a_curve_is_drawn_as_a_path_directive() {
         translation.skipped.is_empty(),
         "a curve is drawn, not refused"
     );
+    assert!(
+        crate::core::document::parse(&translation.document).is_ok(),
+        "a curve is a document the parser accepts"
+    );
 }
 
 #[test]
