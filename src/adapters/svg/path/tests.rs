@@ -111,12 +111,12 @@ fn a_path_with_a_curve_has_no_straight_outline() {
 }
 
 #[test]
-fn an_arc_is_reported_by_name() {
+fn an_arc_is_read_as_cubics() {
     let parsed = segments("M0 0 A 5 5 0 0 1 10 10", 4).expect("an arc");
 
-    assert_eq!(
-        parsed,
-        Parsed::Undrawn("the path uses `A`, which this console does not draw".to_string())
+    assert!(
+        matches!(parsed, Parsed::Segments(_)),
+        "an arc is drawn, not refused"
     );
 }
 
@@ -136,4 +136,33 @@ fn a_path_is_moved_whole() {
             to: Point::new(13, 23),
         }
     );
+}
+
+#[test]
+fn the_flags_written_without_a_separator_are_read_as_flags() {
+    let packed = segments_of("M0 0 A 10 10 0 0110 0");
+    let spaced = segments_of("M0 0 A 10 10 0 0 1 10 0");
+    let other = segments_of("M0 0 A 10 10 0 0010 0");
+
+    assert_eq!(packed, spaced, "the flags are the same arc either way");
+    assert_ne!(
+        packed, other,
+        "the second flag is the `1` of `0110`, and not the number eleven"
+    );
+}
+
+#[test]
+fn a_relative_arc_is_relative_to_the_current_point() {
+    let relative = segments_of("M10 10 a 10 10 0 0 1 10 0");
+    let absolute = segments_of("M10 10 A 10 10 0 0 1 20 10");
+
+    assert_eq!(relative, absolute);
+}
+
+#[test]
+fn an_arc_in_a_path_becomes_cubic_segments() {
+    let segments = segments_of("M0 0 A 4 4 0 0 1 4 4");
+
+    assert_eq!(segments.len(), 2, "a move and one cubic");
+    assert!(matches!(segments[1], Segment::Cubic { .. }));
 }

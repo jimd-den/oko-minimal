@@ -150,13 +150,13 @@ fn a_panel_of_the_whole_budget_is_written() {
 
 #[test]
 fn every_shape_left_out_is_named_in_the_report() {
-    let svg = "<svg viewBox=\"0 0 8 8\">\n<circle cx=\"4\" cy=\"4\" r=\"2\"/>\n<path d=\"M0 0 A 5 5 0 0 1 8 8\" fill=\"#000000\"/>\n</svg>";
+    let svg = "<svg viewBox=\"0 0 8 8\">\n<circle cx=\"4\" cy=\"4\" r=\"2\"/>\n<rect x=\"1\" y=\"1\" width=\"2\" height=\"2\" fill=\"#000000\" stroke=\"#ffffff\"/>\n</svg>";
 
     let translation = translate(svg).expect("an export with holes");
 
     assert_eq!(reasons(&translation).len(), 2);
     assert!(reasons(&translation)[0].contains("circle"));
-    assert!(reasons(&translation)[1].contains("`A`"));
+    assert!(reasons(&translation)[1].contains("stroke"));
 }
 
 /// An SVG of polylines, one per line, each writing four operations.

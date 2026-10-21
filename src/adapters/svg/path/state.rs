@@ -58,6 +58,13 @@ impl State {
         )
     }
 
+    /// A straight edge, and where the path is afterwards.
+    pub(super) fn line(&mut self, to: (f64, f64)) -> Result<Segment, SvgError> {
+        let point = self.at(to)?;
+        self.current = to;
+        Ok(Segment::Line { to: point })
+    }
+
     /// The cubic segment, and where the path is afterwards.
     pub(super) fn cubic(
         &mut self,
