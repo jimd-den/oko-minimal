@@ -1,5 +1,5 @@
 mod tests {
-    use super::super::path::*;
+    use super::super::directive::parse;
     use crate::core::geom::{Point, Rgba};
     use crate::core::path::{Path, Segment};
     use crate::core::scene::Element;

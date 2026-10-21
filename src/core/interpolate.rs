@@ -168,6 +168,11 @@ mod tests {
         let Shape::Path { path, .. } = halfway else {
             panic!("a path is a path");
         };
-        assert_eq!(path.segments[0], Segment::Move { to: Point::new(0, 5) });
+        assert_eq!(
+            path.segments[0],
+            Segment::Move {
+                to: Point::new(0, 5)
+            }
+        );
     }
 }

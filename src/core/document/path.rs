@@ -8,44 +8,42 @@
 //! for a path to inherit, and a shape nobody can see is a shape nobody can
 //! fix.
 
-use super::super::motion::Motion;
 use super::super::path::{Path, Segment};
-use super::super::scene::Element;
 use super::super::shape::Shape;
-use super::super::syntax;
-use std::str::SplitWhitespace;
+use super::words::Words;
 
-pub(crate) fn parse(source: &str) -> Result<Element, String> {
-    let rest = source.strip_prefix("path").unwrap_or(source);
-    let mut words = rest.split_whitespace();
+/// The segments and paints a path states, read from the next words.
+pub(crate) fn read(words: &mut Words) -> Result<Shape, String> {
     let mut segments: Vec<Segment> = Vec::new();
     let mut fill = None;
     let mut stroke = None;
     let mut open = false;
 
-    while let Some(word) = words.next() {
+    while let Some(word) = words.peek(0) {
         match word {
             "M" => {
-                segments.push(Segment::Move {
-                    to: syntax::point(&mut words)?,
-                });
+                words.next();
+                segments.push(Segment::Move { to: words.point()? });
                 open = true;
             }
             "L" | "C" | "Q" => {
                 if !open {
                     return Err("a path must start with `M`".to_string());
                 }
-                segments.push(drawing(word, &mut words)?);
+                words.next();
+                segments.push(drawing(word, words)?);
             }
             "Z" => {
                 if !open {
                     return Err("a `Z` must follow a shape".to_string());
                 }
+                words.next();
                 segments.push(Segment::Close);
                 open = false;
             }
             "fill" | "stroke" => {
-                let colour = syntax::colour(&mut words)?;
+                words.next();
+                let colour = words.colour()?;
                 let slot = if word == "fill" {
                     &mut fill
                 } else {
@@ -55,6 +53,7 @@ pub(crate) fn parse(source: &str) -> Result<Element, String> {
                     return Err(format!("a path states `{word}` once"));
                 }
             }
+            other if super::words::is_keyword(other) => break,
             other => return Err(format!("unknown path command `{other}`")),
         }
     }
@@ -65,26 +64,22 @@ pub(crate) fn parse(source: &str) -> Result<Element, String> {
     if fill.is_none() && stroke.is_none() {
         return Err("a path must state a fill or a stroke".to_string());
     }
-    Element::new(
-        Shape::Path {
-            path: Path { segments },
-            fill,
-            stroke,
-        },
-        Motion::none(),
-    )
+
+    Ok(Shape::Path {
+        path: Path { segments },
+        fill,
+        stroke,
+    })
 }
 
 /// The segment one drawing command makes.
-fn drawing(command: &str, words: &mut SplitWhitespace<'_>) -> Result<Segment, String> {
+fn drawing(command: &str, words: &mut Words) -> Result<Segment, String> {
     match command {
-        "L" => Ok(Segment::Line {
-            to: syntax::point(words)?,
-        }),
+        "L" => Ok(Segment::Line { to: words.point()? }),
         "C" => {
-            let control1 = syntax::point(words)?;
-            let control2 = syntax::point(words)?;
-            let to = syntax::point(words)?;
+            let control1 = words.point()?;
+            let control2 = words.point()?;
+            let to = words.point()?;
             Ok(Segment::Cubic {
                 control1,
                 control2,
@@ -92,8 +87,8 @@ fn drawing(command: &str, words: &mut SplitWhitespace<'_>) -> Result<Segment, St
             })
         }
         _ => {
-            let control = syntax::point(words)?;
-            let to = syntax::point(words)?;
+            let control = words.point()?;
+            let to = words.point()?;
             Ok(Segment::Quadratic { control, to })
         }
     }

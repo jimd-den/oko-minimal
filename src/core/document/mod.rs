@@ -12,10 +12,19 @@
 //! only text that arrives from outside the program.
 
 mod directive;
+#[cfg(test)]
+mod directive_tests;
 mod error;
+mod fields;
+mod motion;
+#[cfg(test)]
+mod motion_tests;
 mod path;
 #[cfg(test)]
 mod path_tests;
+mod words;
+#[cfg(test)]
+mod words_tests;
 
 pub use error::ParseError;
 

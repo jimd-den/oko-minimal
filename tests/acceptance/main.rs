@@ -94,7 +94,11 @@ fn an_arc_is_drawn_as_a_path_directive() {
     );
 
     let scene = oko::core::document::parse(&translation.document).expect("a document");
-    let oko::core::scene::Op::Path { path, .. } = &scene.ops()[0] else {
+    let oko::core::scene::Element {
+        shape: oko::core::shape::Shape::Path { path, .. },
+        ..
+    } = &scene.elements()[0]
+    else {
         panic!("the arc is a path operation");
     };
     assert_eq!(path.segments.len(), 2, "a move and one cubic");

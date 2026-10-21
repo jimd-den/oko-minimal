@@ -5,6 +5,8 @@
 //! what makes every rule below testable in one line.
 
 pub mod blend;
+#[cfg(test)]
+mod blend_tests;
 pub mod clip;
 pub mod curve;
 pub mod document;
