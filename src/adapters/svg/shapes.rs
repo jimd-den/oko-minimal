@@ -9,11 +9,11 @@ use super::emit::{self, Writer};
 use super::error::SvgError;
 use super::outcome::Outcome;
 use super::paint::Paint;
-use super::path::{self, Path};
+use super::path;
 use super::rectangle;
 use super::values;
 use super::xml::Element;
-use crate::core::geom::{Point, Rect};
+use crate::core::geom::{Point, Rect, Rgba};
 use crate::core::syntax::MAX_SIDE;
 
 /// A rectangle, painted with its fill.
@@ -102,7 +102,13 @@ pub fn polyline(
     Ok(Outcome::Drawn)
 }
 
-/// A path: filled as a rectangle when it is one, stroked as an outline.
+/// A path: a rectangle when it is one, and a path otherwise.
+///
+/// A filled path is filled by the core with the non-zero winding rule, which
+/// is SVG's rule, so a triangle is a shape and not a hole in the panel. A
+/// path that is an axis-aligned rectangle is still written as a rectangle,
+/// because the rectangle is the cheaper shape to draw — unless it has a
+/// stroke of its own, which a rectangle directive cannot carry.
 pub fn path(
     document: &mut Writer,
     element: &Element,
@@ -113,45 +119,42 @@ pub fn path(
     let Some(word) = element.attribute("d") else {
         return Err(element.error("a path needs a `d` attribute"));
     };
-    let outline = match path::outline(word, element.line)? {
-        Path::Edges(outline) => outline,
-        Path::Undrawn(reason) => return Ok(Outcome::Undrawn(reason)),
+    let shape = match path::segments(word, element.line)? {
+        path::Parsed::Segments(shape) => shape,
+        path::Parsed::Undrawn(reason) => return Ok(Outcome::Undrawn(reason)),
     };
-    let points: Vec<Point> = outline
-        .points
-        .iter()
-        .map(|point| Point::new(point.x + at.0, point.y + at.1))
-        .collect();
-
-    if let Paint::Colour(colour) = fill {
-        let closed = path::Outline {
-            points: points.clone(),
-            closed: outline.closed,
-        };
-        match rectangle::from_outline(&closed) {
-            Some(area) => emit::rect(document, area, *colour, element.line)?,
-            None => {
-                return Ok(Outcome::Undrawn(
-                    "the fill of this path is not an axis-aligned rectangle".to_string(),
-                ));
-            }
-        }
-    } else if let Paint::Unsupported(reason) = fill {
-        return Ok(Outcome::Undrawn(reason.clone()));
+    let shape = path::translated(&shape, at);
+    let fill = match flat_colour(fill) {
+        Ok(colour) => colour,
+        Err(reason) => return Ok(Outcome::Undrawn(reason)),
+    };
+    let stroke = match flat_colour(stroke) {
+        Ok(colour) => colour,
+        Err(reason) => return Ok(Outcome::Undrawn(reason)),
+    };
+    if fill.is_none() && stroke.is_none() {
+        return Ok(Outcome::Unpainted);
     }
 
-    if let Paint::Colour(colour) = stroke {
-        for pair in points.windows(2) {
-            emit::line(document, pair[0], pair[1], *colour, element.line)?;
-        }
-        if outline.closed && points.len() > 1 {
-            let last = points[points.len() - 1];
-            emit::line(document, last, points[0], *colour, element.line)?;
-        }
-    } else if let Paint::Unsupported(reason) = stroke {
-        return Ok(Outcome::Undrawn(reason.clone()));
+    if let Some(colour) = fill
+        && stroke.is_none()
+        && let Some(outline) = path::outline_of(&shape)
+        && let Some(area) = rectangle::from_outline(&outline)
+    {
+        emit::rect(document, area, colour, element.line)?;
+        return Ok(Outcome::Drawn);
     }
+    emit::path(document, &shape, fill, stroke, element.line)?;
     Ok(Outcome::Drawn)
+}
+
+/// The flat colour of a paint, or the reason there is none.
+fn flat_colour(paint: &Paint) -> Result<Option<Rgba>, String> {
+    match paint {
+        Paint::Colour(colour) => Ok(Some(*colour)),
+        Paint::Nothing => Ok(None),
+        Paint::Unsupported(reason) => Err(reason.clone()),
+    }
 }
 
 fn integer(element: &Element, name: &str, fallback: i32) -> Result<i32, SvgError> {

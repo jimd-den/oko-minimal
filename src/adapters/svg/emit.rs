@@ -12,6 +12,7 @@
 use super::error::SvgError;
 use crate::core::document::MAX_OPS;
 use crate::core::geom::{Point, Rect, Rgba};
+use crate::core::path::{Path, Segment};
 use crate::core::syntax::{MAX_COORDINATE, MAX_SIDE};
 
 /// The document being written, and how many operations it holds.
@@ -92,6 +93,50 @@ pub fn line(
         ),
         line,
     )
+}
+
+/// Write a path directive: the segments, then the paints. The document keeps
+/// the curve, and a path with no paint at all is not written.
+pub fn path(
+    document: &mut Writer,
+    shape: &Path,
+    fill: Option<Rgba>,
+    stroke: Option<Rgba>,
+    line: usize,
+) -> Result<(), SvgError> {
+    if fill.is_none() && stroke.is_none() {
+        return Ok(());
+    }
+    let mut text = String::from("path");
+    for segment in &shape.segments {
+        text.push_str(&format!(" {}", words(segment, line)?));
+    }
+    for (name, colour) in [("fill", fill), ("stroke", stroke)] {
+        if let Some(colour) = colour {
+            text.push_str(&format!(" {name} {}", hex(colour)));
+        }
+    }
+    document.write(&format!("{text}\n"), line)
+}
+
+/// The words one segment is written as.
+fn words(segment: &Segment, line: usize) -> Result<String, SvgError> {
+    let at = |point: Point| {
+        coordinate(point.x, line)?;
+        coordinate(point.y, line)?;
+        Ok(format!("{} {}", point.x, point.y))
+    };
+    Ok(match segment {
+        Segment::Move { to } => format!("M {}", at(*to)?),
+        Segment::Line { to } => format!("L {}", at(*to)?),
+        Segment::Cubic {
+            control1,
+            control2,
+            to,
+        } => format!("C {} {} {}", at(*control1)?, at(*control2)?, at(*to)?),
+        Segment::Quadratic { control, to } => format!("Q {} {}", at(*control)?, at(*to)?),
+        Segment::Close => "Z".to_string(),
+    })
 }
 
 fn coordinate(value: i32, line: usize) -> Result<(), SvgError> {

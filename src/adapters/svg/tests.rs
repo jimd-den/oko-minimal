@@ -70,15 +70,59 @@ fn an_unknown_element_is_left_out_and_named() {
 }
 
 #[test]
-fn a_curve_is_left_out_and_the_rest_of_the_panel_is_drawn() {
+fn a_curve_is_drawn_as_a_path_directive() {
     let svg = "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 C 1 1 2 2 3 3\" fill=\"#000000\"/>\n<rect x=\"1\" y=\"1\" width=\"2\" height=\"2\" fill=\"#ff9d00\"/>\n</svg>";
 
-    let translation = translate(svg).expect("a panel with a hole");
+    let translation = translate(svg).expect("a panel with a curve");
 
-    assert_eq!(translation.document, "rect 1 1 2 2 #ff9d00\n");
-    assert_eq!(translation.skipped.len(), 1);
-    assert_eq!(translation.skipped[0].line, 2);
-    assert!(translation.skipped[0].reason.contains("`C`"));
+    assert_eq!(
+        translation.document,
+        "path M 0 0 C 1 1 2 2 3 3 fill #000000\nrect 1 1 2 2 #ff9d00\n"
+    );
+    assert!(
+        translation.skipped.is_empty(),
+        "a curve is drawn, not refused"
+    );
+    assert!(
+        crate::core::document::parse(&translation.document).is_ok(),
+        "a curve is a document the parser accepts"
+    );
+}
+
+#[test]
+fn a_curve_keeps_the_paints_the_element_states() {
+    let svg = "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 C 1 1 2 2 3 3\" fill=\"#ff9d00\" stroke=\"#1f6feb\"/>\n</svg>";
+
+    let translation = translate(svg).expect("a panel with a curve");
+
+    assert_eq!(
+        translation.document,
+        "path M 0 0 C 1 1 2 2 3 3 fill #ff9d00 stroke #1f6feb\n"
+    );
+}
+
+#[test]
+fn a_triangle_is_filled_rather_than_refused() {
+    let svg = "<svg viewBox=\"0 0 8 8\">\n<path d=\"M1 1 L7 1 L1 7 Z\" fill=\"#ff9d00\"/>\n</svg>";
+
+    let translation = translate(svg).expect("a panel with a triangle");
+
+    assert_eq!(
+        translation.document,
+        "path M 1 1 L 7 1 L 1 7 Z fill #ff9d00\n"
+    );
+    assert!(
+        translation.skipped.is_empty(),
+        "a triangle is drawn, not refused"
+    );
+
+    let scene = crate::core::document::parse(&translation.document).expect("a document");
+    let frame = crate::core::raster::render(&scene, 8, 8).expect("a frame");
+    assert_eq!(
+        frame.color_at(crate::core::geom::Point::new(2, 2)),
+        Some(crate::core::geom::Rgba::rgb(255, 157, 0)),
+        "the inside of the triangle is painted"
+    );
 }
 
 #[test]
@@ -106,13 +150,13 @@ fn a_panel_of_the_whole_budget_is_written() {
 
 #[test]
 fn every_shape_left_out_is_named_in_the_report() {
-    let svg = "<svg viewBox=\"0 0 8 8\">\n<circle cx=\"4\" cy=\"4\" r=\"2\"/>\n<path d=\"M0 0 C 1 1 2 2 3 3\" fill=\"#000000\"/>\n</svg>";
+    let svg = "<svg viewBox=\"0 0 8 8\">\n<circle cx=\"4\" cy=\"4\" r=\"2\"/>\n<path d=\"M0 0 A 5 5 0 0 1 8 8\" fill=\"#000000\"/>\n</svg>";
 
     let translation = translate(svg).expect("an export with holes");
 
     assert_eq!(reasons(&translation).len(), 2);
     assert!(reasons(&translation)[0].contains("circle"));
-    assert!(reasons(&translation)[1].contains("`C`"));
+    assert!(reasons(&translation)[1].contains("`A`"));
 }
 
 /// An SVG of polylines, one per line, each writing four operations.
