@@ -119,7 +119,13 @@ build, which produced three unused-import warnings. It now carries
    pattern `paint/`, `path/` and `text/` already use. Both files were in the
    warning band (over 160 lines) and both grew, so the split was done at
    this seam rather than left to the next change.
-4. **`transparent` is a translucent colour, not an opaque black.** This was
+4. **`Scope` moved out of `translator.rs` into `scope.rs`.** The inherited
+   context — the offset, the paints, the style and the colour an element
+   hands down — was in the translator, but two modules read it: the
+   translator for shapes and `label` for text. Moving it to its own module
+   is a split by responsibility rather than by length, and it takes
+   `translator.rs` from 185 lines to 162.
+5. **`transparent` is a translucent colour, not an opaque black.** This was
    found by merging `main`, which names `transparent` with an alpha of zero
    and whose colour reader refuses a colour it cannot draw opaque. The
    branch's `colour.rs` had no such rule, and would have drawn a transparent

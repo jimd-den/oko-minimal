@@ -9,35 +9,12 @@ use super::emit::Writer;
 use super::error::SvgError;
 use super::outcome::Outcome;
 use super::paint::Inherited;
+use super::scope::Scope;
 use super::shapes;
 use super::transform::{self, Transform};
 use super::values;
 use super::xml::{Element, Node};
 use super::{Skipped, Translation};
-
-/// What an element hands to the elements inside it.
-pub(super) struct Scope {
-    /// Where the origin of this element sits, after the transforms above it.
-    pub(super) offset: (i32, i32),
-    /// The paints the ancestors stated.
-    pub(super) paint: Inherited,
-    /// The style of the text this element is inside, if any.
-    pub(super) style: Option<super::text::Style>,
-    /// The colour of the text this element is inside, if any.
-    pub(super) colour: Option<crate::core::geom::Rgba>,
-}
-
-impl Scope {
-    /// A scope with no text in it.
-    pub(super) fn plain(&self) -> Scope {
-        Scope {
-            offset: self.offset,
-            paint: self.paint.clone(),
-            style: None,
-            colour: None,
-        }
-    }
-}
 
 /// A translator walks an export and writes a document.
 #[derive(Default)]

@@ -7,8 +7,9 @@
 
 use super::error::SvgError;
 use super::paint::Paint;
+use super::scope::Scope;
 use super::text;
-use super::translator::{Scope, Translator};
+use super::translator::Translator;
 use super::xml::{Element, Text};
 
 impl Translator {

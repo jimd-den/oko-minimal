@@ -29,6 +29,7 @@ mod paint;
 pub mod path;
 mod rectangle;
 mod scanner;
+mod scope;
 mod shapes;
 mod style;
 mod tag;
