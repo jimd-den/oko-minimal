@@ -12,7 +12,7 @@ use std::fmt;
 
 use super::binding::{Action, Binding};
 use super::event::Key;
-use super::scene::{Condition, Scene};
+use super::scene::{Condition, Element, Scene};
 
 /// A named flag and its value.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -101,6 +101,23 @@ impl Panel {
             flags,
             bindings,
         })
+    }
+
+    /// How long the panel's shapes keep changing.
+    ///
+    /// A panel with no motion has length zero. A runtime that asks for the
+    /// panel at a moment must not ask it by zero.
+    pub fn duration(&self) -> u64 {
+        self.scene.duration()
+    }
+
+    /// The elements the panel holds, with their motions and their conditions.
+    ///
+    /// The scene a panel draws is the elements it holds, filtered by the
+    /// flags and sampled at a moment. The elements themselves are what the
+    /// panel was written with, and a reader of the document may want them.
+    pub fn elements(&self) -> &[Element] {
+        self.scene.elements()
     }
 
     /// The scene to draw at `now` milliseconds.

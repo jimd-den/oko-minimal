@@ -50,9 +50,10 @@ fn an_svg_export_becomes_a_panel_document() {
     let document = oko::adapters::svg::translate(svg)
         .expect("a supported export")
         .document;
-    let scene =
+    let panel =
         oko::core::document::parse(&document).expect("the translator writes valid documents");
 
+    let scene = panel.scene(0);
     assert_eq!(
         scene.elements()[0].shape,
         oko::core::shape::Shape::Rect {
@@ -93,7 +94,8 @@ fn an_arc_is_drawn_as_a_path_directive() {
         "an arc is drawn, not refused"
     );
 
-    let scene = oko::core::document::parse(&translation.document).expect("a document");
+    let panel = oko::core::document::parse(&translation.document).expect("a document");
+    let scene = panel.scene(0);
     let oko::core::shape::Shape::Path { path, .. } = &scene.elements()[0].shape else {
         panic!("the arc is a path operation");
     };
@@ -111,7 +113,7 @@ fn an_svg_label_becomes_a_text_operation() {
     let document = oko::adapters::svg::translate(svg)
         .expect("a supported export")
         .document;
-    let scene =
+    let panel =
         oko::core::document::parse(&document).expect("the translator writes valid documents");
 
     let directives: Vec<&str> = document
@@ -126,7 +128,8 @@ fn an_svg_label_becomes_a_text_operation() {
         ]
     );
 
-    let labels: Vec<oko::core::shape::Shape> = scene
+    let labels: Vec<oko::core::shape::Shape> = panel
+        .scene(0)
         .elements()
         .iter()
         .filter(|e| matches!(e.shape, oko::core::shape::Shape::Text { .. }))

@@ -154,3 +154,42 @@ fn the_picture_settles_when_the_timeline_has_ended() {
     assert!(runtime.tick(1000), "the end of the timeline is painted");
     assert!(!runtime.tick(1100), "the picture has come to rest");
 }
+
+#[test]
+fn a_key_reaches_the_panel_and_the_frame_changes() {
+    let mut runtime = runtime(8, 4);
+    runtime
+        .document(
+            "flag shown\nclear #000000\nrect 0 0 2 2 #ff0000 when shown\non key enter set shown true",
+        )
+        .expect("a valid document");
+
+    let before = runtime.frame().expect("a frame");
+    assert_eq!(
+        before.color_at(Point::new(0, 0)),
+        Some(crate::core::geom::Rgba::rgb(0, 0, 0)),
+        "the shape is hidden while the flag is false"
+    );
+
+    let effect = runtime.event(Event::Key(Key::plain(KeyCode::Enter)));
+
+    assert_eq!(effect, Some(Effect::Repaint));
+    let after = runtime.frame().expect("a frame");
+    assert_eq!(
+        after.color_at(Point::new(0, 0)),
+        Some(crate::core::geom::Rgba::rgb(255, 0, 0)),
+        "the shape is drawn now"
+    );
+}
+
+#[test]
+fn a_quit_binding_hands_the_screen_back() {
+    let mut runtime = runtime(8, 4);
+    runtime
+        .document("on key escape quit")
+        .expect("a valid document");
+
+    let effect = runtime.event(Event::Key(Key::plain(KeyCode::Escape)));
+
+    assert_eq!(effect, Some(Effect::ReclaimDisplay));
+}

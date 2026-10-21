@@ -13,8 +13,8 @@ use crate::core::document::{self, ParseError};
 use crate::core::event::Event;
 use crate::core::frame::Frame;
 use crate::core::lease::{Generation, Lease, LeaseError, OwnerId};
+use crate::core::panel::{Outcome, Panel};
 use crate::core::raster;
-use crate::core::scene::Scene;
 use crate::core::session::{Effect, Session};
 
 use super::sequence::CHORD;
@@ -25,7 +25,7 @@ const OWNER: OwnerId = OwnerId(1);
 /// The state of a console that is presenting a document.
 pub struct Runtime {
     session: Session,
-    scene: Option<Scene>,
+    panel: Option<Panel>,
     frame: Option<Frame>,
     size: (u32, u32),
     /// The moment the picture was last painted at.
@@ -39,7 +39,7 @@ impl Runtime {
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             session: Session::new(CHORD),
-            scene: None,
+            panel: None,
             frame: None,
             size: (width, height),
             at: None,
@@ -66,8 +66,8 @@ impl Runtime {
     /// and says why, with the line it was on.
     pub fn document(&mut self, text: &str) -> Result<(), String> {
         match document::parse(text) {
-            Ok(scene) => {
-                self.scene = Some(scene);
+            Ok(panel) => {
+                self.panel = Some(panel);
                 self.at = None;
                 self.settled = false;
                 self.render();
@@ -77,11 +77,30 @@ impl Runtime {
         }
     }
 
-    /// An event arrived. The session decides what it means.
+    /// An event arrived. The panel answers first, then the session.
+    ///
+    /// The panel is the content, so a key is offered to it before the
+    /// session hears about it. The session holds the screen's authority, and
+    /// the escape chord is not bindable, so a key the panel does not want
+    /// still reaches the session (ADR 0009).
     pub fn event(&mut self, event: Event) -> Option<Effect> {
         if let Event::Resize { width, height } = event {
             self.size = (width, height);
             self.render();
+            return self.session.dispatch(event);
+        }
+        if let Event::Key(key) = event
+            && let Some(panel) = self.panel.as_mut()
+        {
+            match panel.key(key) {
+                Outcome::Unchanged => {}
+                Outcome::Changed => {
+                    self.settled = false;
+                    self.render();
+                    return Some(Effect::Repaint);
+                }
+                Outcome::Quit => return Some(Effect::ReclaimDisplay),
+            }
         }
         self.session.dispatch(event)
     }
@@ -95,14 +114,14 @@ impl Runtime {
     ///   - A panel with no motion is painted once, when it is loaded.
     ///   - After the timeline's end the picture has come to rest and stays.
     pub fn tick(&mut self, now: u64) -> bool {
-        let Some(scene) = self.scene.as_ref() else {
+        let Some(panel) = self.panel.as_ref() else {
             return false;
         };
-        if scene.duration() == 0 || self.settled || self.at == Some(now) {
+        if panel.duration() == 0 || self.settled || self.at == Some(now) {
             return false;
         }
         self.at = Some(now);
-        if now >= scene.duration() {
+        if now >= panel.duration() {
             self.settled = true;
         }
         self.render_at(now);
@@ -123,9 +142,9 @@ impl Runtime {
     /// Draw the document as it is at this moment.
     fn render_at(&mut self, now: u64) {
         let frame = self
-            .scene
+            .panel
             .as_ref()
-            .and_then(|scene| raster::render(&scene.at(now), self.size.0, self.size.1));
+            .and_then(|panel| raster::render(&panel.scene(now), self.size.0, self.size.1));
         self.frame = frame;
     }
 }

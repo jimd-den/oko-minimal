@@ -6,8 +6,8 @@ mod tests {
     use crate::core::shape::Shape;
 
     fn motion_of(text: &str) -> Motion {
-        let scene = parse(text).expect("a document");
-        scene.elements()[0].motion.clone()
+        let panel = parse(text).expect("a document");
+        panel.elements()[0].motion.clone()
     }
 
     fn error_of(text: &str) -> String {
@@ -133,11 +133,11 @@ mod tests {
 
     #[test]
     fn a_document_with_a_motion_reaches_the_frame() {
-        let scene = parse("clear #000000\nrect 4 4 4 4 #ff9d00 to 60 4 4 4 #ff0000 over 2s")
+        let panel = parse("clear #000000\nrect 4 4 4 4 #ff9d00 to 60 4 4 4 #ff0000 over 2s")
             .expect("a document");
 
-        let midway = raster::render(&scene.at(1000), 80, 12).expect("a frame");
-        let rest = raster::render(&scene.at(2000), 80, 12).expect("a frame");
+        let midway = raster::render(&panel.scene(1000), 80, 12).expect("a frame");
+        let rest = raster::render(&panel.scene(2000), 80, 12).expect("a frame");
 
         assert_eq!(
             midway.color_at(Point::new(32, 4)),

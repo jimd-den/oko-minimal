@@ -65,8 +65,10 @@ pub fn run(path: &Path) -> io::Result<()> {
         if count > 0 {
             decoder.feed(&buffer[..count]);
             while let Some(event) = decoder.event() {
-                if let Some(Effect::ReclaimDisplay) = runtime.event(event) {
-                    running = false;
+                match runtime.event(event) {
+                    Some(Effect::ReclaimDisplay) => running = false,
+                    Some(Effect::Repaint) => present(&mut out, &runtime)?,
+                    Some(Effect::Deliver { .. }) | None => {}
                 }
             }
         }

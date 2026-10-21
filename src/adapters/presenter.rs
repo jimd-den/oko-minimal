@@ -33,9 +33,9 @@ pub fn pixel_size(columns: u32, rows: u32) -> (u32, u32) {
 
 /// The bytes of a document, painted at the given size in pixels.
 pub fn paint(document: &str, width: u32, height: u32) -> Result<String, PaintError> {
-    let scene = document::parse(document)?;
-    let frame =
-        raster::render(&scene, width, height).ok_or(PaintError::FrameTooLarge { width, height })?;
+    let panel = document::parse(document)?;
+    let frame = raster::render(&panel.scene(0), width, height)
+        .ok_or(PaintError::FrameTooLarge { width, height })?;
     Ok(encode(&frame))
 }
 

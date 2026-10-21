@@ -19,6 +19,8 @@ pub(crate) const AFTER: &str = "after";
 pub(crate) const TO: &str = "to";
 /// The word that states how long a leg takes.
 pub(crate) const OVER: &str = "over";
+/// The word that states the flag a shape is drawn under.
+pub(crate) const WHEN: &str = "when";
 
 /// The words of a line, and where we are among them.
 #[derive(Debug)]
@@ -108,7 +110,7 @@ impl<'a> Words<'a> {
     }
 
     /// The next word, unless it is a keyword: a value is never a keyword.
-    fn value(&mut self) -> Option<&'a str> {
+    pub(crate) fn value(&mut self) -> Option<&'a str> {
         match self.peek(0) {
             Some(word) if !is_keyword(word) => {
                 self.at += 1;
@@ -141,7 +143,7 @@ impl<'a> Words<'a> {
 
 /// Whether a word is one the document reserves for its grammar.
 pub(crate) fn is_keyword(word: &str) -> bool {
-    matches!(word, AFTER | TO | OVER)
+    matches!(word, AFTER | TO | OVER | WHEN)
 }
 
 /// The words of a line, a quoted run being one word.

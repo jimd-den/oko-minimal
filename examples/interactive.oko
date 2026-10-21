@@ -1,0 +1,11 @@
+# A panel with a flag and a key.
+#
+# The rectangle is drawn only while the flag is true. The enter key sets the
+# flag and the tab key clears it, and the panel needs nothing else.
+
+flag cursor
+clear #101820
+text 4 5 "ENTER: SHOW  TAB: HIDE" 1 #4fc3f7
+rect 4 10 12 7 #ff9d00 when cursor
+on key enter set cursor true
+on key tab set cursor false

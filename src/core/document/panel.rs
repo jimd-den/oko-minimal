@@ -1,0 +1,115 @@
+//! The lines of a document that belong to the panel, not to a shape.
+//!
+//! A panel declares its flags and binds its keys. The flags are the panel's
+//! own content state; the session's lease and focus are about the screen's
+//! authority, and the two are not merged (ADR 0009).
+//!
+//! The lines are:
+//!
+//! ```text
+//! flag cursor
+//! flag running true
+//! on key enter set cursor true
+//! on key escape quit
+//! ```
+//!
+//! A panel may not run a command, read a file, or change anything outside
+//! itself, so the actions are the whole vocabulary: set a flag, or quit.
+
+use super::super::binding::{Action, Binding};
+use super::super::event::{Key, KeyCode};
+use super::super::panel::Flag;
+use super::super::scene::Condition;
+use super::words::{WHEN, Words};
+
+/// A flag, read from the words after `flag`.
+///
+/// A flag with no value is false: a flag is what a key may turn on, and a
+/// panel that has just been drawn has nothing turned on yet.
+pub(crate) fn flag(words: &mut Words) -> Result<Flag, String> {
+    let name = words.value().ok_or("expected a flag name")?;
+    let value = match words.value() {
+        None => false,
+        Some("true") => true,
+        Some("false") => false,
+        Some(other) => return Err(format!("a flag is true or false, not `{other}`")),
+    };
+    words.end()?;
+    Ok(Flag::new(name, value))
+}
+
+/// A binding, read from the words after `on`.
+pub(crate) fn binding(words: &mut Words) -> Result<Binding, String> {
+    if !words.is(0, "key") {
+        return Err("expected `on key`".to_string());
+    }
+    words.next();
+    let name = words.next().unwrap_or_default();
+    let Some(key) = key_named(name) else {
+        return Err(format!("`{name}` is not a key a panel may bind"));
+    };
+    let action = action(words)?;
+    words.end()?;
+    Binding::new(key, action).map_err(|error| error.to_string())
+}
+
+/// The action, read from the words after the key.
+fn action(words: &mut Words) -> Result<Action, String> {
+    let word = words.next().unwrap_or_default();
+    match word {
+        "quit" => Ok(Action::Quit),
+        "set" => {
+            let name = words.value().ok_or("expected a flag name")?;
+            let value = match words.value() {
+                Some("true") => true,
+                Some("false") => false,
+                Some(other) => return Err(format!("a flag is true or false, not `{other}`")),
+                None => return Err("expected `true` or `false`".to_string()),
+            };
+            Ok(Action::Set {
+                flag: name.to_string(),
+                value,
+            })
+        }
+        other => Err(format!("expected `set` or `quit`, not `{other}`")),
+    }
+}
+
+/// The condition, read from the words after a shape's own fields.
+///
+/// The clause comes last, after any motion, so that a line reads as the
+/// shape, then what it becomes, then when it is painted at all.
+pub(crate) fn condition(words: &mut Words) -> Result<Condition, String> {
+    if !words.is(0, WHEN) {
+        return Ok(Condition::Always);
+    }
+    words.next();
+    let name = words.value().ok_or("expected a flag name")?;
+    Ok(Condition::Flag(name.to_string()))
+}
+
+/// The key a name speaks of: a named key, or a single character.
+///
+/// The escape chord is not here: it is the way back to the console, and no
+/// panel may bind it (ADR 0009).
+fn key_named(name: &str) -> Option<Key> {
+    let code = match name {
+        "enter" => KeyCode::Enter,
+        "tab" => KeyCode::Tab,
+        "backspace" => KeyCode::Backspace,
+        "escape" => KeyCode::Escape,
+        "up" => KeyCode::Up,
+        "down" => KeyCode::Down,
+        "left" => KeyCode::Left,
+        "right" => KeyCode::Right,
+        _ => {
+            let mut characters = name.chars();
+            let character = characters.next()?;
+            if characters.next().is_some() {
+                return None;
+            }
+            KeyCode::Char(character)
+        }
+    };
+    Some(Key::plain(code))
+}
