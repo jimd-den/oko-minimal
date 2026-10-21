@@ -29,8 +29,11 @@ writes something the console must interpret at runtime.
 - The document remains the source of truth. It is human-readable, diffable, hot
   reloadable, and independent of the editor that produced it.
 - The translator is total and bounded: 1 MiB input, 4096 elements, 64 attributes
-  per element, 4096 path points, and the document format's own coordinate and
-  size limits. Every refusal names a line.
+  per element, an attribute value of at most 1 MiB, 4096 path points, and the
+  document format's own coordinate and size limits. Every refusal names a line.
+  The attribute bound is as large as the input, because an export that embeds
+  an image writes it as a base64 attribute and a kilobyte bound refuses the
+  whole file over a picture.
 - Curves, rotation, scale, opacity below one and unknown elements are refused,
   not approximated. Text was refused on the same grounds until the built-in
   font made a mapping possible; ADR 0003 records what replaced that refusal.
