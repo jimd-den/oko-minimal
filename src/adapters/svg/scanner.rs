@@ -1,16 +1,19 @@
 //! Reading the stream of tags an SVG export contains.
 //!
 //! This is not an XML parser. It reads elements, attributes, comments, the XML
-//! declaration and runs of character data, and it refuses doctypes and
-//! entities. That is the whole input surface of the translator, and keeping the
-//! surface this small is what makes "bounded" a property of the code rather
-//! than a promise.
+//! declaration and runs of character data, and it refuses doctypes. The
+//! entity references an export writes are decoded, because a real export
+//! writes them and refusing a file over a font family with a space in it is
+//! refusing the export. That is the whole input surface of the translator, and
+//! keeping the surface this small is what makes "bounded" a property of the
+//! code rather than a promise.
 //!
 //! Every limit is a refusal, never a truncation: too many elements, too many
 //! attributes, an oversized value, or an unterminated construct stops with a
 //! line number.
 
 use super::cursor::Cursor;
+use super::entity;
 use super::error::SvgError;
 use super::tag;
 use super::xml::{Event, MAX_ELEMENTS};
@@ -51,7 +54,7 @@ fn header(cursor: &mut Cursor<'_>) -> Result<Option<Event>, SvgError> {
         return Ok(None);
     }
     if cursor.begins("<!") {
-        return Err(cursor.error("declarations and entities are not allowed"));
+        return Err(cursor.error("declarations are not allowed"));
     }
     tag::read(cursor)
 }
@@ -59,9 +62,9 @@ fn header(cursor: &mut Cursor<'_>) -> Result<Option<Event>, SvgError> {
 /// A run of character data.
 ///
 /// Whitespace between elements carries nothing, so it stays ignored. A run
-/// with a word in it is delivered as it was written: entities are refused
-/// rather than decoded, because a decoded `&amp;` would be text the reader
-/// never saw.
+/// with a word in it is delivered as the author wrote it, with the entity
+/// references decoded: `&amp;` is the character `&`, which is what the
+/// author typed.
 fn text(cursor: &mut Cursor<'_>) -> Result<Option<Event>, SvgError> {
     let source = cursor.source();
     let rest = &source.as_bytes()[cursor.at..];
@@ -74,9 +77,7 @@ fn text(cursor: &mut Cursor<'_>) -> Result<Option<Event>, SvgError> {
     let content = source[cursor.at..end].to_string();
     cursor.skip_to(end);
 
-    if content.contains('&') {
-        return Err(SvgError::new(line, "entities are not allowed"));
-    }
+    let content = entity::decode(&content, line)?;
     if content.trim().is_empty() {
         return Ok(None);
     }
@@ -116,10 +117,23 @@ mod tests {
     }
 
     #[test]
-    fn an_entity_in_a_run_is_refused() {
-        let error = events("<text>a&amp;b</text>").expect_err("an entity");
+    fn an_entity_in_a_run_is_decoded() {
+        let events = events("<text>a&amp;b</text>").expect("a label");
+
+        assert_eq!(
+            events[1],
+            Event::Text {
+                content: "a&b".to_string(),
+                line: 1,
+            }
+        );
+    }
+
+    #[test]
+    fn an_unknown_entity_in_a_run_is_refused_by_name() {
+        let error = events("<text>a&nbsp;b</text>").expect_err("an entity");
 
         assert_eq!(error.line, 1);
-        assert!(error.problem.contains("entities"));
+        assert!(error.problem.contains("&nbsp;"));
     }
 }
