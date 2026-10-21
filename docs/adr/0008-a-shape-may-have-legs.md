@@ -34,7 +34,10 @@ time.**
   the two legs that surround the moment in question.
 - The core has no clock and never reads one. `Scene::at(now)` is a pure
   function: the same scene and the same moment always give the same scene.
-  The runtime owns the clock and asks.
+  The runtime owns the clock and asks, and the renderer is never handed a
+  moment: the runtime samples the scene and gives the renderer the scene it
+  sampled. The moment is an explicit argument to a pure function, and never
+  a hidden clock inside one.
 - The document states the motion on the same line as the shape, so a person
   reading a panel sees the shape and what it does together:
 
@@ -42,6 +45,11 @@ time.**
 
   A leg is `to <state> over <duration>`, and a duration is a number and a
   unit, `ms` or `s`. A shape may carry a delay before its first leg.
+  `to` is followed by the shape's own fields, without its keyword: for a
+  rectangle `x y w h colour`, for a line `x1 y1 x2 y2 colour`, for a text
+  `x y "label" scale colour`, for a path its segments and its paints. The
+  target is the same kind of shape as the one it follows; a target of
+  another kind is refused, and named.
 - What interpolates is what a tween can move: a position, a size, a colour.
   A text's label does not interpolate - a text that becomes a different text
   is refused, and named. A path may move to a path of the same structure, and
@@ -49,10 +57,14 @@ time.**
 - The interpolation is linear. An easing curve is a function from progress to
   progress, and it is a later decision; the shape of that decision is already
   here, because a leg would carry one.
-- The scene knows how long it is: the longest motion in it. A runtime that
-  wants a panel to loop asks the scene for its length and wraps the clock.
-  The document does not say `loop`, because looping is what the *runtime*
-  does with a clock and not something a shape is.
+- The scene knows how long it is. The length is the latest moment at which
+  any shape is still changing, counted from the moment the panel appeared:
+  a shape's delay plus its legs, and not its legs alone. A scene with no
+  motion has no length, and a runtime that wraps a clock must not wrap it
+  by zero. A runtime that wants a panel to loop asks the scene for its
+  length and wraps the clock. The document does not say `loop`, because
+  looping is what the *runtime* does with a clock and not something a shape
+  is.
 
 ## Consequences
 
