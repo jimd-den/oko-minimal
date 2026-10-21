@@ -6,10 +6,13 @@
 //! returns the bytes a terminal would receive - so the whole presenter can
 //! be tested without a terminal.
 //!
-//! Two shapes of the same work live here. `paint` writes a frame as a
+//! Three shapes of the same work live here. `paint` writes a frame as a
 //! stream of lines, which is what a pipe wants. `screen` places the rows
-//! on a screen, which is what a terminal wants. Neither knows about a
-//! device; the terminal adapter owns the device.
+//! on a screen, which is what a terminal wants. `screen_update` places
+//! only the cells that changed, which is what a moving picture wants:
+//! a sweep crossing a still panel should cost the sweep, not the panel.
+//! None of them knows about a device; the terminal adapter owns the
+//! device.
 //!
 //! Twenty-four bit colour is assumed. A palette fallback is a separate
 //! adapter, because a terminal that cannot show true colour still needs a
@@ -62,19 +65,77 @@ pub fn screen(frame: &Frame) -> String {
     bytes
 }
 
+/// The bytes that bring a screen showing `previous` to `frame`: each
+/// run of cells whose colours changed, placed where it belongs, and
+/// nothing else. Identical frames update to no bytes at all.
+///
+/// A frame of a different size cannot be diffed against the old one -
+/// every address would be a guess - so the whole screen is painted,
+/// exactly as `screen` paints it.
+pub fn screen_update(previous: &Frame, frame: &Frame) -> String {
+    if previous.width() != frame.width() || previous.height() != frame.height() {
+        return screen(frame);
+    }
+    let mut bytes = String::new();
+    let mut y = 0;
+    while frame.row(y).is_some() {
+        update_row(&mut bytes, previous, frame, y);
+        y += 2;
+    }
+    bytes
+}
+
+/// One character row of an update: the changed runs of the row, each
+/// placed at its column, in the frame's own colours.
+fn update_row(bytes: &mut String, previous: &Frame, frame: &Frame, y: u32) {
+    let before = cells(previous, y);
+    let now = cells(frame, y);
+    let mut x = 0;
+    while x < now.len() {
+        if before[x] == now[x] {
+            x += 1;
+            continue;
+        }
+        bytes.push_str(&format!("\x1b[{};{}H", y / 2 + 1, x + 1));
+        let mut painted = None;
+        while x < now.len() && before[x] != now[x] {
+            let colors = now[x];
+            if painted != Some(colors) {
+                bytes.push_str(&escape(colors.0, colors.1));
+                painted = Some(colors);
+            }
+            bytes.push(HALF_BLOCK);
+            x += 1;
+        }
+        bytes.push_str("\x1b[0m");
+    }
+}
+
+/// The cells of one character row of a frame: each cell's top and
+/// bottom colour, left to right. A missing bottom row repeats the top,
+/// as the last row of an odd-height frame has always painted.
+fn cells(frame: &Frame, y: u32) -> Vec<(Rgba, Rgba)> {
+    let Some(top) = frame.row(y) else {
+        return Vec::new();
+    };
+    let bottom = frame.row(y + 1).unwrap_or(top);
+    top.iter()
+        .zip(bottom)
+        .map(|(upper, lower)| (*upper, *lower))
+        .collect()
+}
+
 /// The character rows of a frame: the colour of every cell, as the
 /// characters a terminal shows.
 fn rows(frame: &Frame) -> Vec<String> {
     let mut rows = Vec::new();
     let mut y = 0;
 
-    while let Some(top) = frame.row(y) {
-        let bottom = frame.row(y + 1).unwrap_or(top);
+    while frame.row(y).is_some() {
         let mut previous = None;
         let mut row = String::new();
 
-        for (upper, lower) in top.iter().zip(bottom) {
-            let colors = (*upper, *lower);
+        for colors in cells(frame, y) {
             if previous != Some(colors) {
                 row.push_str(&escape(colors.0, colors.1));
                 previous = Some(colors);
