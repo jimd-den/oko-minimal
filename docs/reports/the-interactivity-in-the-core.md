@@ -124,7 +124,7 @@ line budget OK
 ```
 
 Sizes: `core/panel.rs` 182, `core/binding.rs` 74, `core/scene.rs` 142,
-`core/panel_tests.rs` 165, `core/binding_tests.rs` 41,
+`core/panel_tests.rs` 184, `core/binding_tests.rs` 36,
 `core/scene_tests.rs` 109.
 
 ## One thing that was already broken
