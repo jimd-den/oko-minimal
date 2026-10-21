@@ -21,6 +21,8 @@ pub(crate) const TO: &str = "to";
 pub(crate) const OVER: &str = "over";
 /// The word that states the flag a shape is drawn under.
 pub(crate) const WHEN: &str = "when";
+/// The word that states the space between the letters of a text.
+pub(crate) const SPACING: &str = "spacing";
 
 /// The words of a line, and where we are among them.
 #[derive(Debug)]
@@ -101,6 +103,13 @@ impl<'a> Words<'a> {
         Ok(value as u32)
     }
 
+    /// A whole number, read from the next word.
+    pub(crate) fn number(&mut self) -> Result<i64, String> {
+        let word = self.value().ok_or("expected a number")?;
+        word.parse()
+            .map_err(|_| format!("`{word}` is not a whole number"))
+    }
+
     /// The end of the words: nothing may be left.
     pub(crate) fn end(&mut self) -> Result<(), String> {
         match self.next() {
@@ -143,7 +152,7 @@ impl<'a> Words<'a> {
 
 /// Whether a word is one the document reserves for its grammar.
 pub(crate) fn is_keyword(word: &str) -> bool {
-    matches!(word, AFTER | TO | OVER | WHEN)
+    matches!(word, AFTER | TO | OVER | WHEN | SPACING)
 }
 
 /// The words of a line, a quoted run being one word.

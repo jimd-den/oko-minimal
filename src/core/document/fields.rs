@@ -15,7 +15,7 @@ use super::super::font;
 use super::super::geom::{Point, Rect};
 use super::super::shape::Shape;
 use super::path;
-use super::words::Words;
+use super::words::{SPACING, Words};
 
 /// The kinds of shape a document may name.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -137,10 +137,17 @@ fn text(words: &mut Words) -> Result<Shape, String> {
     }
     let scale = words.scale()?;
     let color = words.colour()?;
+    let spacing = if words.is(0, SPACING) {
+        words.next();
+        words.number()?
+    } else {
+        0
+    };
     Ok(Shape::Text {
         at,
         text: label,
         scale,
         color,
+        spacing,
     })
 }

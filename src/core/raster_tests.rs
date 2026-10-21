@@ -98,6 +98,7 @@ mod tests {
                 text: "I".to_string(),
                 scale: 1,
                 color: Rgba::WHITE,
+                spacing: 0,
             },
         );
 

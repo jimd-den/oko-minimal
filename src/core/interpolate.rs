@@ -55,11 +55,13 @@ pub fn between(from: &Shape, to: &Shape, progress: f64) -> Shape {
                 text,
                 scale: one_scale,
                 color: one_color,
+                spacing: one_spacing,
             },
             Shape::Text {
                 at: other_at,
                 scale: other_scale,
                 color: other_color,
+                spacing: _other_spacing,
                 ..
             },
         ) => Shape::Text {
@@ -67,6 +69,7 @@ pub fn between(from: &Shape, to: &Shape, progress: f64) -> Shape {
             text: text.clone(),
             scale: blend::scale(*one_scale, *other_scale, progress),
             color: blend::colour(*one_color, *other_color, progress),
+            spacing: *one_spacing,
         },
         (
             Shape::Path {
@@ -119,12 +122,14 @@ mod tests {
         let one = Shape::Text {
             at: Point::new(0, 0),
             text: "OK".to_string(),
+            spacing: 0,
             scale: 1,
             color: Rgba::WHITE,
         };
         let other = Shape::Text {
             at: Point::new(10, 0),
             text: "OK".to_string(),
+            spacing: 0,
             scale: 1,
             color: Rgba::BLACK,
         };
@@ -136,6 +141,7 @@ mod tests {
             Shape::Text {
                 at: Point::new(5, 0),
                 text: "OK".to_string(),
+                spacing: 0,
                 scale: 1,
                 color: Rgba::rgb(128, 128, 128)
             }

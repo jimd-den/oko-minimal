@@ -15,11 +15,55 @@ use super::font;
 use super::frame::Frame;
 use super::geom::{Point, Rgba};
 
-pub fn paint(frame: &mut Frame, at: Point, text: &str, scale: u8, colour: Rgba) {
+/// A text to draw: what it says, how big, how far apart its letters are,
+/// and in what colour.
+///
+/// The spacing is the space the design put between the letters. The font's
+/// own advance is the floor; the spacing is what the design asked for on
+/// top of it (ADR 0010).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Text<'a> {
+    pub at: Point,
+    pub text: &'a str,
+    pub scale: u8,
+    pub spacing: i64,
+    pub colour: Rgba,
+}
+
+/// The width of a text, in pixels: the width the design would give it.
+///
+/// A character the font does not have takes the widest advance, because a
+/// hole in a word is still a space on the page.
+pub fn width(text: &str, scale: u8, spacing: i64) -> i64 {
     let scale = i64::from(scale.clamp(1, font::MAX_SCALE));
+    let mut wide = 0;
+    for (index, character) in text.chars().enumerate() {
+        let step = match font::glyph(character) {
+            Some(glyph) => font::advance_of(glyph, scale),
+            None => font::advance(scale),
+        };
+        wide += step;
+        if index > 0 {
+            wide += spacing;
+        }
+    }
+    // The last advance carries a gap of its own, and the text does not.
+    wide.saturating_sub(1)
+}
+
+pub fn paint(frame: &mut Frame, text: &Text) {
+    let Text {
+        at,
+        text: label,
+        scale,
+        spacing,
+        colour,
+    } = text;
+    let scale = i64::from((*scale).clamp(1, font::MAX_SCALE));
+    let spacing = *spacing;
     let mut pen = (i64::from(at.x), i64::from(at.y));
 
-    for character in text.chars() {
+    for character in label.chars() {
         let Some(glyph) = font::glyph(character) else {
             pen.0 += font::advance(scale);
             continue;
@@ -33,12 +77,12 @@ pub fn paint(frame: &mut Frame, at: Point, text: &str, scale: u8, colour: Rgba) 
                         pen.0 + (column - left) * scale,
                         pen.1 + row * scale,
                         scale,
-                        colour,
+                        *colour,
                     );
                 }
             }
         }
-        pen.0 += font::advance_of(glyph, scale);
+        pen.0 += font::advance_of(glyph, scale) + spacing;
     }
 }
 
@@ -59,64 +103,4 @@ fn put(frame: &mut Frame, x: i64, y: i64, colour: Rgba) {
         return;
     }
     frame.set(Point::new(x as i32, y as i32), colour);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn an_i_is_a_column_with_two_rules() {
-        let mut frame = Frame::new(5, 7).expect("a glyph-sized frame");
-
-        paint(&mut frame, Point::new(0, 0), "I", 1, Rgba::WHITE);
-
-        assert_eq!(frame.color_at(Point::new(0, 0)), Some(Rgba::WHITE));
-        assert_eq!(frame.color_at(Point::new(4, 6)), Some(Rgba::WHITE));
-        assert_eq!(frame.color_at(Point::new(2, 3)), Some(Rgba::WHITE));
-        assert_eq!(frame.color_at(Point::new(0, 3)), Some(Rgba::BLACK));
-    }
-
-    #[test]
-    fn a_scale_multiplies_the_glyph() {
-        let mut frame = Frame::new(10, 14).expect("a doubled frame");
-
-        paint(&mut frame, Point::new(0, 0), "I", 2, Rgba::WHITE);
-
-        assert_eq!(frame.color_at(Point::new(9, 0)), Some(Rgba::WHITE));
-        assert_eq!(frame.color_at(Point::new(4, 6)), Some(Rgba::WHITE));
-        assert_eq!(frame.color_at(Point::new(0, 6)), Some(Rgba::BLACK));
-    }
-
-    #[test]
-    fn a_text_is_as_wide_as_its_letters() {
-        let mut frame = Frame::new(20, 7).expect("a frame");
-
-        paint(&mut frame, Point::new(0, 0), "ii", 1, Rgba::WHITE);
-
-        assert_eq!(
-            frame.color_at(Point::new(4, 2)),
-            Some(Rgba::WHITE),
-            "the second letter follows the first one's own width"
-        );
-        assert_eq!(
-            frame.color_at(Point::new(2, 4)),
-            Some(Rgba::BLACK),
-            "a letter is separated from the next by one column"
-        );
-        assert_eq!(
-            frame.color_at(Point::new(3, 4)),
-            Some(Rgba::WHITE),
-            "the second letter stands where the first one ended"
-        );
-    }
-
-    #[test]
-    fn a_space_leaves_the_frame_alone() {
-        let mut frame = Frame::new(6, 7).expect("a small frame");
-
-        paint(&mut frame, Point::new(0, 0), " ", 1, Rgba::WHITE);
-
-        assert_eq!(frame.color_at(Point::new(0, 0)), Some(Rgba::BLACK));
-    }
 }

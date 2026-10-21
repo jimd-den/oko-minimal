@@ -143,12 +143,14 @@ fn an_svg_label_becomes_a_text_operation() {
                 text: "OKO".to_string(),
                 scale: 3,
                 color: oko::core::geom::Rgba::rgb(255, 157, 0),
+                spacing: 0,
             },
             oko::core::shape::Shape::Text {
                 at: oko::core::geom::Point::new(6, 31),
                 text: "SYSTEM READY".to_string(),
                 scale: 1,
                 color: oko::core::geom::Rgba::rgb(201, 209, 217),
+                spacing: 0,
             },
         ]
     );

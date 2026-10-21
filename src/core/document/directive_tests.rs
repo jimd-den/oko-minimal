@@ -48,8 +48,31 @@ mod tests {
                 text: "A B".to_string(),
                 scale: 2,
                 color: Rgba::rgb(255, 157, 0),
+                spacing: 0,
             }
         );
+    }
+
+    #[test]
+    fn a_text_may_state_the_space_between_its_letters() {
+        let panel = parse("text 0 0 \"A B\" 1 #ff9d00 spacing 2").expect("a spaced label");
+
+        let spacing = match &panel.scene(0).elements()[0].shape {
+            Shape::Text { spacing, .. } => *spacing,
+            other => panic!("a text is a text: {other:?}"),
+        };
+        assert_eq!(spacing, 2);
+    }
+
+    #[test]
+    fn a_text_without_a_spacing_uses_the_font_own_spacing() {
+        let panel = parse("text 0 0 \"A B\" 1 #ff9d00").expect("a label");
+
+        let spacing = match &panel.scene(0).elements()[0].shape {
+            Shape::Text { spacing, .. } => *spacing,
+            other => panic!("a text is a text: {other:?}"),
+        };
+        assert_eq!(spacing, 0);
     }
 
     #[test]

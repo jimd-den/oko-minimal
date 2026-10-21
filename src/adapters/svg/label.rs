@@ -74,7 +74,12 @@ impl Translator {
         match text::label(&run.content, run.line)? {
             None => Ok(()),
             Some(text::Label::Text(label)) => {
-                text::emit(&mut self.document, &style, &label, colour, run.line)
+                if let Some(note) =
+                    text::emit(&mut self.document, &style, &label, colour, run.line)?
+                {
+                    self.skip(run.line, note);
+                }
+                Ok(())
             }
             Some(text::Label::Undrawable(reason)) => {
                 self.skip(run.line, reason);

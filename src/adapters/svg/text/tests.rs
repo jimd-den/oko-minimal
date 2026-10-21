@@ -112,3 +112,77 @@ fn a_group_translation_moves_its_label() {
 
     assert_eq!(document(svg), "text 12 5 \"A\" 1 #000000\n");
 }
+
+#[test]
+fn a_letter_spacing_is_read_and_becomes_the_document_s_spacing() {
+    let svg = "<svg><text x=\"1\" y=\"9\" letter-spacing=\"2\">A</text></svg>";
+
+    assert_eq!(document(svg), "text 1 2 \"A\" 1 #000000 spacing 2\n");
+}
+
+#[test]
+fn a_letter_spacing_of_normal_is_no_spacing() {
+    let svg = "<svg><text x=\"1\" y=\"9\" style=\"letter-spacing: normal\">A</text></svg>";
+
+    assert_eq!(document(svg), "text 1 2 \"A\" 1 #000000\n");
+}
+
+#[test]
+fn a_letter_spacing_in_em_is_a_share_of_the_font_size() {
+    let svg =
+        "<svg><text x=\"1\" y=\"16\" font-size=\"14\" letter-spacing=\"0.5em\">A</text></svg>";
+
+    assert_eq!(document(svg), "text 1 2 \"A\" 2 #000000 spacing 7\n");
+}
+
+#[test]
+fn a_text_length_fits_the_label_with_its_spacing() {
+    let svg =
+        "<svg><text x=\"1\" y=\"9\" textLength=\"30\" lengthAdjust=\"spacing\">ABC</text></svg>";
+
+    let document = document(svg);
+    assert!(document.contains("spacing "), "{document}");
+}
+
+#[test]
+fn a_text_anchor_moves_the_label() {
+    let svg = "<svg><text x=\"20\" y=\"9\" text-anchor=\"end\">AB</text></svg>";
+
+    let document = document(svg);
+    assert_eq!(document, "text 9 2 \"AB\" 1 #000000\n");
+}
+
+#[test]
+fn a_text_that_stretches_its_glyphs_is_fitted_by_its_spacing_and_named() {
+    let svg = "<svg><text x=\"1\" y=\"9\" textLength=\"30\" lengthAdjust=\"spacingAndGlyphs\">AB</text></svg>";
+
+    let translation = translate(svg).expect("a fitted label");
+
+    assert!(
+        translation.document.contains("spacing "),
+        "{}",
+        translation.document
+    );
+    assert_eq!(translation.skipped.len(), 1);
+    assert!(
+        translation.skipped[0].reason.contains("glyph"),
+        "{:?}",
+        translation.skipped[0]
+    );
+}
+
+#[test]
+fn a_text_wider_than_the_length_the_design_gave_it_keeps_the_font_own_width() {
+    let svg =
+        "<svg><text x=\"1\" y=\"9\" textLength=\"4\" lengthAdjust=\"spacing\">ABCDEFG</text></svg>";
+
+    let translation = translate(svg).expect("a panel with a wide label");
+
+    assert_eq!(translation.document, "text 1 2 \"ABCDEFG\" 1 #000000\n");
+    assert_eq!(translation.skipped.len(), 1);
+    assert!(
+        translation.skipped[0].reason.contains("wider"),
+        "{:?}",
+        translation.skipped[0]
+    );
+}

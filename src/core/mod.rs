@@ -34,6 +34,10 @@ pub mod scene;
 mod scene_tests;
 pub mod session;
 pub mod shape;
+#[cfg(test)]
+mod shape_tests;
 pub mod syntax;
 pub mod text;
+#[cfg(test)]
+mod text_tests;
 pub mod timeline;

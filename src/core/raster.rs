@@ -31,7 +31,17 @@ fn paint(frame: &mut Frame, shape: &Shape) {
             text: label,
             scale,
             color,
-        } => text::paint(frame, *at, label, *scale, *color),
+            spacing,
+        } => text::paint(
+            frame,
+            &text::Text {
+                at: *at,
+                text: label,
+                scale: *scale,
+                spacing: *spacing,
+                colour: *color,
+            },
+        ),
         Shape::Path { path, fill, stroke } => paint_path(frame, path, *fill, *stroke),
     }
 }

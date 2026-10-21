@@ -7,6 +7,7 @@
 
 use super::super::emit::Writer;
 use super::super::error::SvgError;
+use super::Anchor;
 use super::Style;
 use crate::core::font;
 use crate::core::geom::Rgba;
@@ -74,8 +75,21 @@ pub fn emit(
     label: &str,
     colour: Rgba,
     line: usize,
-) -> Result<(), SvgError> {
+) -> Result<Option<String>, SvgError> {
     let scale = scale(style.size);
+    let (spacing, note) = fitted_spacing(style, label, scale);
+    let note = note.or_else(|| {
+        style.stretches.then(|| {
+            "the text is fitted by its spacing; the glyphs are the font's own and are not stretched"
+                .to_string()
+        })
+    });
+    let width = crate::core::text::width(label, scale, spacing);
+    let x = match style.anchor {
+        Anchor::Start => style.x,
+        Anchor::Middle => style.x - (width / 2) as i32,
+        Anchor::End => style.x - width as i32,
+    };
 
     // SVG places a label by its baseline; the document places it by its top
     // edge. The built-in font has no descenders, so its bottom row is the
@@ -83,7 +97,7 @@ pub fn emit(
     let height = font::GLYPH_HEIGHT as i32 * i32::from(scale);
     let top = style.y - height;
 
-    for value in [style.x, top] {
+    for value in [x, top] {
         if i64::from(value).abs() > MAX_COORDINATE {
             return Err(SvgError::new(
                 line,
@@ -91,64 +105,56 @@ pub fn emit(
             ));
         }
     }
+    let spacing = if spacing == 0 {
+        String::new()
+    } else {
+        format!(" spacing {spacing}")
+    };
     document.write(
         &format!(
-            "text {} {} \"{}\" {} {}\n",
-            style.x,
+            "text {} {} \"{}\" {} {}{}\n",
+            x,
             top,
             label,
             scale,
-            hex(colour)
+            hex(colour),
+            spacing
         ),
         line,
-    )
+    )?;
+    Ok(note)
+}
+
+/// The spacing that fills the length the design asked for.
+///
+/// The letters keep their own width and the space between them grows or
+/// shrinks, which is what a browser does with `lengthAdjust="spacing"`. A
+/// design that stretches the glyphs as well is fitted the same way, and the
+/// report says that the letterforms are the font's own.
+fn fitted_spacing(style: &Style, label: &str, scale: u8) -> (i64, Option<String>) {
+    let Some(length) = style.length else {
+        return (style.spacing, None);
+    };
+    let gaps = label.chars().count().saturating_sub(1) as i64;
+    if gaps == 0 {
+        return (style.spacing, None);
+    }
+    let natural = crate::core::text::width(label, scale, style.spacing);
+    let extra = length - natural;
+    if extra < 0 {
+        // The built-in font is wider than the face the design was set in, so
+        // a length shorter than the text would overlap the letters. The
+        // panel is drawn at the font's own width and the report says so.
+        return (
+            style.spacing,
+            Some(format!(
+                "the text is wider than the length the design gave it ({length} against {natural}), so it is drawn at the font's own width"
+            )),
+        );
+    }
+    (style.spacing + extra / gaps, None)
 }
 
 fn hex(colour: Rgba) -> String {
     format!("#{:02x}{:02x}{:02x}", colour.r, colour.g, colour.b)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_twenty_one_pixel_label_is_scale_three() {
-        assert_eq!(scale(21.0), 3);
-    }
-
-    #[test]
-    fn a_scale_above_the_limit_is_capped() {
-        assert_eq!(scale(200.0), font::MAX_SCALE);
-    }
-
-    #[test]
-    fn a_label_trims_and_collapses_its_whitespace() {
-        assert_eq!(
-            label("  A   B ", 1),
-            Ok(Some(Label::Text("A B".to_string())))
-        );
-    }
-
-    #[test]
-    fn a_run_of_whitespace_is_no_label() {
-        assert_eq!(label("   ", 1), Ok(None));
-    }
-
-    #[test]
-    fn a_character_outside_the_font_is_left_out() {
-        assert_eq!(
-            label("A~", 3),
-            Ok(Some(Label::Undrawable(
-                "the character `~` is not in the built-in font".to_string()
-            )))
-        );
-    }
-
-    #[test]
-    fn a_label_with_a_double_quote_is_refused() {
-        let error = label("A\"B", 1).expect_err("a quote");
-
-        assert!(error.problem.contains("double quote"));
-    }
 }

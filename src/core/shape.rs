@@ -20,11 +20,15 @@ pub enum Shape {
     /// A straight line.
     Line { from: Point, to: Point, color: Rgba },
     /// A label, drawn in the built-in font.
+    ///
+    /// The spacing is the space the design put between the letters, on top
+    /// of the font's own advance (ADR 0010).
     Text {
         at: Point,
         text: String,
         scale: u8,
         color: Rgba,
+        spacing: i64,
     },
     /// A path, with the paints it carries. Either paint may be absent: a path
     /// that is only filled is not outlined, and one that is only stroked is
@@ -60,9 +64,18 @@ impl Shape {
             )),
             (Shape::Rect { .. }, Shape::Rect { .. }) => Ok(()),
             (Shape::Line { .. }, Shape::Line { .. }) => Ok(()),
-            (Shape::Text { text: one, .. }, Shape::Text { text: other, .. }) if one == other => {
-                Ok(())
-            }
+            (
+                Shape::Text {
+                    text: one,
+                    spacing: one_spacing,
+                    ..
+                },
+                Shape::Text {
+                    text: other,
+                    spacing: other_spacing,
+                    ..
+                },
+            ) if one == other && one_spacing == other_spacing => Ok(()),
             (Shape::Text { .. }, Shape::Text { .. }) => {
                 Err("a text cannot become a different text".to_string())
             }
@@ -91,109 +104,4 @@ fn same_shape(one: &Path, other: &Path) -> bool {
             .iter()
             .zip(other.segments.iter())
             .all(|(one, other)| std::mem::discriminant(one) == std::mem::discriminant(other))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::path::Segment;
-
-    fn rect() -> Shape {
-        Shape::Rect {
-            area: Rect::new(0, 0, 4, 4),
-            color: Rgba::WHITE,
-        }
-    }
-
-    fn line() -> Shape {
-        Shape::Line {
-            from: Point::new(0, 0),
-            to: Point::new(8, 8),
-            color: Rgba::WHITE,
-        }
-    }
-
-    fn text(label: &str) -> Shape {
-        Shape::Text {
-            at: Point::new(0, 0),
-            text: label.to_string(),
-            scale: 1,
-            color: Rgba::WHITE,
-        }
-    }
-
-    fn path(segments: Vec<Segment>) -> Shape {
-        Shape::Path {
-            path: Path { segments },
-            fill: Some(Rgba::WHITE),
-            stroke: None,
-        }
-    }
-
-    #[test]
-    fn a_rectangle_may_become_a_rectangle() {
-        assert!(rect().can_become(&rect()).is_ok());
-    }
-
-    #[test]
-    fn a_rectangle_may_not_become_a_line() {
-        let refusal = rect().can_become(&line()).expect_err("another kind");
-
-        assert!(refusal.contains("rectangle"), "{refusal}");
-        assert!(refusal.contains("line"), "{refusal}");
-    }
-
-    #[test]
-    fn a_text_may_not_become_a_different_text() {
-        let refusal = text("OK")
-            .can_become(&text("NO"))
-            .expect_err("another label");
-
-        assert!(refusal.contains("text"), "{refusal}");
-    }
-
-    #[test]
-    fn a_text_may_become_the_same_text() {
-        assert!(text("OK").can_become(&text("OK")).is_ok());
-    }
-
-    #[test]
-    fn a_path_may_not_become_a_path_of_another_shape() {
-        let one = path(vec![Segment::Move {
-            to: Point::new(0, 0),
-        }]);
-        let other = path(vec![
-            Segment::Move {
-                to: Point::new(0, 0),
-            },
-            Segment::Line {
-                to: Point::new(4, 4),
-            },
-        ]);
-
-        let refusal = one.can_become(&other).expect_err("another shape");
-
-        assert!(refusal.contains("path"), "{refusal}");
-    }
-
-    #[test]
-    fn a_path_may_become_a_path_of_the_same_shape() {
-        let one = path(vec![Segment::Move {
-            to: Point::new(0, 0),
-        }]);
-        let other = path(vec![Segment::Move {
-            to: Point::new(9, 9),
-        }]);
-
-        assert!(one.can_become(&other).is_ok());
-    }
-
-    #[test]
-    fn a_clear_may_not_move() {
-        let refusal = Shape::Clear(Rgba::WHITE)
-            .can_become(&rect())
-            .expect_err("a clear has nothing to move to");
-
-        assert!(refusal.contains("clear"), "{refusal}");
-    }
 }
