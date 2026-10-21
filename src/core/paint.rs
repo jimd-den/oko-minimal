@@ -8,8 +8,9 @@
 //! The arithmetic lives here and not in the renderer because it is the part
 //! of drawing a path that is genuinely new: a rectangle never needed it.
 
+use super::curve::Sample;
 use super::frame::Frame;
-use super::geom::{Point, Rect, Rgba, Sample};
+use super::geom::{Point, Rect, Rgba};
 use super::path::{Path, Polyline, sample};
 
 /// A run of pixels in one row that a filled shape covers.

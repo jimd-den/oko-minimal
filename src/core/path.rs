@@ -9,7 +9,8 @@
 //! Nothing here draws. `sample` answers one question — where are the points
 //! of this path — and the renderer decides what to do with them.
 
-use super::geom::{Point, Sample, evaluate};
+use super::curve::{Sample, evaluate};
+use super::geom::Point;
 
 /// One step of a path.
 ///
@@ -135,7 +136,7 @@ fn curve(shapes: &mut Polyline, controls: &[Sample], open: &mut bool) -> Sample 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::geom::Sample;
+    use crate::core::curve::Sample;
 
     /// An arc of a given size: a cubic from the origin over to the right.
     fn arc(size: i32) -> Path {

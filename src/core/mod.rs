@@ -5,6 +5,7 @@
 //! what makes every rule below testable in one line.
 
 pub mod clip;
+pub mod curve;
 pub mod document;
 pub mod event;
 pub mod focus;
