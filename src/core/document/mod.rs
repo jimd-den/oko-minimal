@@ -14,6 +14,8 @@
 mod directive;
 mod error;
 mod path;
+#[cfg(test)]
+mod path_tests;
 
 pub use error::ParseError;
 
@@ -59,7 +61,7 @@ mod tests {
     use super::*;
     use crate::core::geom::{Point, Rect, Rgba};
     use crate::core::raster;
-    use crate::core::scene::Op;
+    use crate::core::shape::Shape;
 
     #[test]
     fn a_document_describes_a_scene() {
@@ -71,15 +73,16 @@ line 0 0 9 4 #1f6feb";
 
         let scene = parse(text).expect("a valid document");
 
+        let shapes: Vec<Shape> = scene.elements().iter().map(|e| e.shape.clone()).collect();
         assert_eq!(
-            scene.ops(),
+            shapes,
             [
-                Op::Clear(Rgba::rgb(5, 7, 10)),
-                Op::Rect {
+                Shape::Clear(Rgba::rgb(5, 7, 10)),
+                Shape::Rect {
                     area: Rect::new(2, 2, 10, 4),
                     color: Rgba::rgb(255, 157, 0),
                 },
-                Op::Line {
+                Shape::Line {
                     from: Point::new(0, 0),
                     to: Point::new(9, 4),
                     color: Rgba::rgb(31, 111, 235),

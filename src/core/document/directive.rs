@@ -6,11 +6,13 @@
 
 use super::super::font;
 use super::super::geom::Point;
-use super::super::scene::Op;
+use super::super::motion::Motion;
+use super::super::scene::Element;
+use super::super::shape::Shape;
 use super::super::syntax;
 use super::path;
 
-pub(crate) fn parse(source: &str) -> Result<Op, String> {
+pub(crate) fn parse(source: &str) -> Result<Element, String> {
     let mut words = source.split_whitespace();
     let name = words.next().unwrap_or_default();
 
@@ -22,13 +24,13 @@ pub(crate) fn parse(source: &str) -> Result<Op, String> {
         return path::parse(source);
     }
 
-    let op = match name {
-        "clear" => Op::Clear(syntax::colour(&mut words)?),
-        "rect" => Op::Rect {
+    let shape = match name {
+        "clear" => Shape::Clear(syntax::colour(&mut words)?),
+        "rect" => Shape::Rect {
             area: syntax::area(&mut words)?,
             color: syntax::colour(&mut words)?,
         },
-        "line" => Op::Line {
+        "line" => Shape::Line {
             from: syntax::point(&mut words)?,
             to: syntax::point(&mut words)?,
             color: syntax::colour(&mut words)?,
@@ -37,10 +39,10 @@ pub(crate) fn parse(source: &str) -> Result<Op, String> {
     };
 
     syntax::end(&mut words)?;
-    Ok(op)
+    Element::new(shape, Motion::none())
 }
 
-fn text(source: &str) -> Result<Op, String> {
+fn text(source: &str) -> Result<Element, String> {
     let rest = source.strip_prefix("text").unwrap_or(source);
     let (x, rest) = syntax::coordinate_prefix(rest)?;
     let (y, rest) = syntax::coordinate_prefix(rest)?;
@@ -52,12 +54,15 @@ fn text(source: &str) -> Result<Op, String> {
     }
     let (scale, rest) = syntax::scale_prefix(rest)?;
     let colour = syntax::colour_rest(rest)?;
-    Ok(Op::Text {
-        at: Point::new(x, y),
-        text: label,
-        scale,
-        color: colour,
-    })
+    Element::new(
+        Shape::Text {
+            at: Point::new(x, y),
+            text: label,
+            scale,
+            color: colour,
+        },
+        Motion::none(),
+    )
 }
 
 #[cfg(test)]
@@ -98,8 +103,8 @@ mod tests {
         let op = parse("text 2 3 \"A B\" 2 #ff9d00").expect("a label");
 
         assert_eq!(
-            op,
-            Op::Text {
+            op.shape,
+            Shape::Text {
                 at: Point::new(2, 3),
                 text: "A B".to_string(),
                 scale: 2,
@@ -134,8 +139,8 @@ mod tests {
         let op = parse("rect 2 2 10 4 #ff9d00").expect("a rectangle");
 
         assert_eq!(
-            op,
-            Op::Rect {
+            op.shape,
+            Shape::Rect {
                 area: Rect::new(2, 2, 10, 4),
                 color: Rgba::rgb(255, 157, 0),
             }

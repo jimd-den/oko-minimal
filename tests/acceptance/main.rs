@@ -54,8 +54,8 @@ fn an_svg_export_becomes_a_panel_document() {
         oko::core::document::parse(&document).expect("the translator writes valid documents");
 
     assert_eq!(
-        scene.ops()[0],
-        oko::core::scene::Op::Rect {
+        scene.elements()[0].shape,
+        oko::core::shape::Shape::Rect {
             area: oko::core::geom::Rect::new(0, 0, 80, 48),
             color: oko::core::geom::Rgba::rgb(5, 7, 10),
         }
@@ -103,22 +103,22 @@ fn an_svg_label_becomes_a_text_operation() {
         ]
     );
 
-    let labels: Vec<oko::core::scene::Op> = scene
-        .ops()
+    let labels: Vec<oko::core::shape::Shape> = scene
+        .elements()
         .iter()
-        .filter(|op| matches!(op, oko::core::scene::Op::Text { .. }))
-        .cloned()
+        .filter(|e| matches!(e.shape, oko::core::shape::Shape::Text { .. }))
+        .map(|e| e.shape.clone())
         .collect();
     assert_eq!(
         labels,
         [
-            oko::core::scene::Op::Text {
+            oko::core::shape::Shape::Text {
                 at: oko::core::geom::Point::new(6, 3),
                 text: "OKO".to_string(),
                 scale: 3,
                 color: oko::core::geom::Rgba::rgb(255, 157, 0),
             },
-            oko::core::scene::Op::Text {
+            oko::core::shape::Shape::Text {
                 at: oko::core::geom::Point::new(6, 31),
                 text: "SYSTEM READY".to_string(),
                 scale: 1,
