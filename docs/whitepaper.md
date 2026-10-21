@@ -25,7 +25,7 @@ pipeline that happens to draw rectangles very well.
 pixels; given the same document it returns the same scene or the same errors. It
 has no clock, no filesystem, no terminal, and no globals. `adapters` is the
 outside world: it reads bytes, writes escape sequences, and translates an SVG
-export. `main` names a file and a terminal; nothing else does.
+export. `main` and the binaries name files and terminals; nothing else does.
 
 The line between them is the display list. A `Scene` is a short sequence of
 `Clear`, `Rect`, `Line` and `Text`. A `Frame` is an opaque grid of pixels. `render` is
@@ -65,11 +65,23 @@ will use when they become processes.
 
 Draw in Penpot or Figma, export SVG, translate. The translator is a whitelist:
 rectangles, lines, polylines, straight paths, translations, flat colours, and
-text with its spans. It refuses curves, rotation, scale and opacity below one
-by name and line. A label is drawn by the built-in font, so its size is the
-authored size rounded to a whole number of glyph heights, capped at eight, and
-it is drawn in uppercase. It writes the same document a person would type, and that document
-is the source of truth. A visual editor can come later and write the same text;
+text with its spans. It reads an export as its tool wrote it: the entities XML
+defines are decoded, the basic colour names a browser has always known are
+read beside the digits, a fill inherited from a group is honoured, a fill
+hidden in a style attribute is found, and the elements that only hold
+definitions are stepped over rather than refused.
+
+It draws what it can and reports what it cannot. A curve, a rotation, a
+scale, a paint server, an element outside the whitelist, a character the
+built-in font does not have: each of these is left out of the document, and
+each is named in the report with the line of the export it was on and the
+reason in words. The panel around it still loads. A label is drawn by the
+built-in font, so its size is the authored size rounded to a whole number of
+glyph heights, capped at eight, and it is drawn in uppercase. A translucent
+colour is left out and named, because the document format has no alpha; an
+`opacity` attribute is not read at all, and a shape that states one is drawn
+opaque. It writes the same document a person would type, and that document is
+the source of truth. A visual editor can come later and write the same text;
 it is not a prerequisite.
 
 The bounding is the point. An SVG file is an untrusted program in most systems;
@@ -83,7 +95,7 @@ them and refuses the panel that would need more than the format allows.
 ## The line is the design
 
 No source file exceeds two hundred lines, and most functions are a dozen lines
-or fewer; the longest is the path grammar's reader, which reads a small language
+or fewer; the longest reads a path's `d` attribute, which is a small language
 in one place. This is not tidiness. A file that fits in one read is a file that can be
 held in a REPL variable, read whole by a reviewer, and delegated without a
 summary. The size limit is what makes purity practical: small pure functions are
@@ -99,16 +111,18 @@ The lint is green or it is not; the budget is a script, not a matter of taste.
   the five-by-seven bitmap font and the text it draws, the document parser, the
   lease, focus, and the session reducer.
 - `adapters`: a terminal encoder (two square pixels per cell, 24-bit colour), a
-  painter, and the bounded SVG translator, which reads labels as well as shapes.
-- `oko panel.oko [columns rows]` paints one frame. `oko-svg panel.svg` writes the
-  document. Examples for both.
-- 114 tests. The gate is `make check`: line budget, format, types, clippy, tests.
+  painter, and the bounded SVG translator, which reads labels as well as shapes
+  and reports the shapes it could not draw.
+- `oko panel.oko [columns rows]` paints one frame. `oko-svg panel.svg` writes
+  the document to standard output and the report to standard error. Examples for
+  both.
+- 152 tests. The gate is `make check`: line budget, format, types, clippy, tests.
 
 ## What is deliberately absent
 
-Pointer input. Images, arcs, paths with curves, transforms and opacity. The
-surface wire format between processes. The boot console, getty handoff and the
-framebuffer presenters. A visual editor.
+Pointer input. In the display list: images, arcs, curves, transforms and
+opacity. The surface wire format between processes. The boot console, getty
+handoff and the framebuffer presenters. A visual editor.
 
 Each is a decision with an ADR, not a forgotten feature. The invariant they
 serve is the one from SRD-002: the machine must always reach a usable first

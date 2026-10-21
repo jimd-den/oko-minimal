@@ -62,7 +62,7 @@ needs no terminal.
 - A full frame is redrawn per present. At terminal sizes this is microseconds;
   at 1280x800 it is not. Damage rectangles are the next performance decision.
 - The core can be tested in one line per rule. `cargo test` is under a second.
-- Text, pointer input, images and transforms are absent from the display list
+- Pointer input, images and transforms are absent from the display list
   until a test demands them. The document grammar rejects them rather than
   ignoring them.
 - The console's own lifecycle (boot, login, session) is not yet a reducer here;

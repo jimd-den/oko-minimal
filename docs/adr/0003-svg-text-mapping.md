@@ -1,15 +1,16 @@
 # 0003 — SVG text becomes a text directive, at an approximated scale
 
-Status: accepted · Date: 2026-10-21
+Status: accepted · Date: 2026-10-21 · Text amended by
+`docs/adr/0004-draw-what-you-can-report-what-you-cannot.md`
 
 ## Context
 
 The built-in font landed with the panel document: `text X Y "LABEL" SCALE #rrggbb`
 is a directive, and the renderer draws five-by-seven bitmaps at any integer
-scale. The SVG translator, however, refuses `<text>` outright, because the XML
-reader treats every character run as an error. The result is that a panel with
-words in it — the normal case for a Penpot or Figma export — has to be
-hand-authored as document text, and the two authoring paths have drifted apart.
+scale. The SVG translator, however, refused `<text>` outright, because the XML
+reader treated every character run as an error. The result was that a panel
+with words in it — the normal case for a Penpot or Figma export — had to be
+hand-authored as document text, and the two authoring paths had drifted apart.
 
 SVG text is not a small thing. It has a font, a size, a baseline, a fill, and
 usually a `<tspan>` per line. A translator that pretended to support all of that
@@ -21,18 +22,20 @@ the weight this project exists to remove.
 The translator maps SVG text onto the one text directive, with these rules and
 no more.
 
-**Reading text.** The XML reader gains a text event. A character run that is
+**Reading text.** The XML reader gains a text node. A character run that is
 not only whitespace is delivered as `Text { content, line }`; whitespace-only
-runs stay ignored, as they are today. A run containing `&` is decoded: the five XML
+runs are ignored, as they were before. A run containing `&` is decoded: the five XML
 entities and numeric references become the characters they name. The research
 in `docs/reports/svg-export-shapes.md` showed why — a real Figma export writes
 `&#10;` for a soft line break, and a real Penpot export writes `&quot;` for
 any font family with a space in it, so refusing an entity refused the whole
-file over a character the author never typed. A text event outside a `<text>`
+file over a character the author never typed. A text node outside a `<text>`
 or a `<tspan>` element is an error, not a warning.
 
 **Elements.** `<text>` and `<tspan>` are supported. Every other element keeps
-its current behaviour.
+its current behaviour: an element that holds definitions is stepped over, and
+one the console does not draw is left out of the document and named in the
+report rather than refused.
 
 **Position.** `x` and `y` are the label's left edge and its baseline, in
 pixels, as SVG has them: a label is placed by the line it sits on, not by the
@@ -77,8 +80,10 @@ parser.
 
 **Content.** A run is trimmed, and internal whitespace runs collapse to one
 space. An empty result is ignored. Every character must exist in the built-in
-font; a character that does not is an error naming it. Lowercase is accepted
-and drawn as uppercase, which is the font's rule, not the translator's.
+font; a character that does not is left out of the document and named in the
+report, because it is a shape the console cannot draw rather than a file it
+cannot read. Lowercase is accepted and drawn as uppercase, which is the
+font's rule, not the translator's.
 
 **Output.** One directive per run: `text X Y "LABEL" SCALE #rrggbb`. A label
 may not contain a double quote, because the document grammar has no escapes;
@@ -99,8 +104,9 @@ such a label is an error.
 
 ## Consequences
 
-- The translator can read a panel that has words in it, and it cannot
-  represent a label that the built-in font cannot draw.
+- The translator can read a panel that has words in it, and a label the
+  built-in font cannot draw is left out of the document and named in the
+  report, with the panel around it still loading.
 - Text in an SVG is drawn uppercase, at a size close to but not exactly the
   authored size.
 - The document grammar stays as it is: one text directive, one label, one

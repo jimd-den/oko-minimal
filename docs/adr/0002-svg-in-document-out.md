@@ -1,7 +1,8 @@
 # 0002 — SVG in, panel document out
 
 Status: accepted · Date: 2026-10-21 · Text amended by
-`docs/adr/0003-svg-text-mapping.md`
+`docs/adr/0003-svg-text-mapping.md` and
+`docs/adr/0004-draw-what-you-can-report-what-you-cannot.md`
 
 ## Context
 
@@ -20,30 +21,40 @@ writes something the console must interpret at runtime.
 
 - Input: the subset of SVG that a panel export uses — `svg`, `g`, `rect`,
   `line`, `polyline`, straight-line `path` (`M`, `L`, `H`, `V`, `Z`), `translate`
-  transforms, `viewBox` origin, hex, `rgb()` and `rgba()` colours and the CSS
-  colour names, full opacity, and `text` with its `tspan` lines, which ADR
-  0003 added later. A fill stated on a group is inherited by its children, as
-  SVG says, and the structural elements — `defs`, `style`, `pattern`, gradients,
-  clip paths — are skipped rather than refused.
-- Output: the existing panel document, one directive per line.
+  transforms and the `matrix()` that is a translation written the long way,
+  `viewBox` origin, opaque colours — hex, `rgb()`, an `rgba()` with full alpha,
+  and the CSS colour names — and `text` with its `tspan` lines, which ADR
+  0003 added later. A fill stated on a group is inherited by its children,
+  as SVG says, and the structural elements — `defs`, `style`, `pattern`,
+  gradients, clip paths — are skipped rather than refused.
+- Output: the existing panel document, one directive per line, and the list of
+  the shapes that were left out of it, each with the line of the export it was
+  on.
 - The document remains the source of truth. It is human-readable, diffable, hot
   reloadable, and independent of the editor that produced it.
 - The translator is total and bounded: 1 MiB input, 4096 elements, 64 attributes
-  per element, an attribute value of at most 1 MiB, 4096 path points, and the
-  document format's own coordinate and size limits. Every refusal names a line.
-  The attribute bound is as large as the input, because an export that embeds
+  per element, an attribute value of at most 1 MiB, 4096 path points, 4096
+  operations written, and the document format's own coordinate and size limits.
+  Every refusal names a line, and so does every shape that was left out. The
+  attribute bound is as large as the input, because an export that embeds
   an image writes it as a base64 attribute and a kilobyte bound refuses the
   whole file over a picture.
-- Curves, rotation, scale, opacity below one and unknown elements are refused,
-  not approximated. Text was refused on the same grounds until the built-in
-  font made a mapping possible; ADR 0003 records what replaced that refusal.
-  A paint reference such as `url(#gradient)` is refused by name, because
-  resolving a paint server is a different job from reading a colour. A silent
-  approximation is a picture nobody can trace back to the source.
+- Curves, rotation, scale, a translucent colour and unknown elements are not
+  approximated. ADR 0004 separated the two kinds of failure: a file the
+  translator cannot read is an error, and a shape it cannot draw is left out of
+  the document and named in the report. Text was refused on the same grounds
+  until the built-in font made a mapping possible; ADR 0003 records what
+  replaced that refusal. A paint reference such as `url(#gradient)` is named
+  by the report for the same reason, because resolving a paint server is a
+  different job from reading a colour. A silent approximation is a picture
+  nobody can trace back to the source.
 
 `oko-svg panel.svg > panel.oko` is the whole bridge. The translator is a library
 function (`adapters::svg::translate`) first and a binary second, so it is tested
-without a filesystem.
+without a filesystem. It returns a translation rather than a string: the
+document, and the shapes that were left out of it. The command writes the
+document to standard output and the list to standard error, so a pipe keeps
+only the panel and a person still sees what was lost.
 
 ## Alternatives
 
@@ -62,22 +73,36 @@ without a filesystem.
 - A v1 design cannot use curves, rotation or transparency. Text was the first
   limitation to remove, and it has been: the bitmap font exists and the
   translator maps SVG text onto the document's text directive. Curves and
-  transforms still need new display-list primitives.
+  transforms still need new display-list primitives, and until they exist a
+  real export loses shapes to them and the report says which.
 - Scaling from a design-time viewBox to a runtime frame is not performed. The
   panel is authored in pixels at the target size; this is a deliberate limit.
 - The translator must track the document grammar's limits. It imports the same
   constants, so the two cannot drift, and it counts the operations it writes,
   because one element can become many directives.
-- The editor's output is not trusted. The XML scanner refuses doctypes, and
-  decodes the entities an export writes, and the translator refuses anything
-  outside its whitelist.
+- The editor's output is not trusted. The reader refuses declarations, and
+  decodes the entities an export writes, and the translator draws only what
+  its whitelist names: anything else is left out of the document and reported.
+- The `opacity`, `fill-opacity` and `stroke-opacity` attributes are read, and a
+  shape that states one below one is named in the report rather than drawn
+  opaque. They were briefly the one thing the translator did not read: the
+  earlier translator refused these attributes by name, and the redesign that
+  read the file as a tree dropped the check without recording it, so a
+  translucent shape was drawn opaque and the report said nothing. The paper
+  found it, and it is closed.
 
 ## Revisit if
 
 - curves become necessary for the first real panel, which forces a path fill
   rule — the text half of this trigger has already fired, and ADR 0003 is the
-  decision that answered it;
+  decision that answered it; the curve half has fired too, because real
+  exports carry curves, and ADR 0004 answered it by reporting them;
 - exports begin to use `<use>`, `<defs>` or stylesheets, which forces a symbol
-  table and a second pass;
+  table and a second pass — the definitions and the stylesheet an export
+  carries are stepped over today, and a `<use>` outside a definition is
+  reported as an element the console does not draw;
 - an embedded editor appears, which should write the document and delete the
-  translator's reason to grow.
+  translator's reason to grow;
+- the `opacity` attributes are read, or refused, so that a translucent shape is
+  either drawn for what it is or named in the report — this trigger has fired,
+  and the attributes are read.
