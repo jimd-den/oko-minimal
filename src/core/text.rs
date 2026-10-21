@@ -1,9 +1,11 @@
 //! Laying out bitmap text into a frame.
 //!
 //! Text is drawn with the rectangle primitive, one glyph at a time, left to
-//! right on a fixed six-pixel advance. There is no shaping, no kerning and no
-//! fallback font: a character the built-in font does not have is a document
-//! error, caught at parse time, so the renderer never has to guess.
+//! right. Each glyph carries its own width, so the pen moves by the width of
+//! the letter that was drawn and not by a fixed pitch. There is no shaping,
+//! no kerning and no fallback font: a character the built-in font does not
+//! have is a document error, caught at parse time, so the renderer never has
+//! to guess.
 //!
 //! The pen is 64-bit and every write is clipped. A label that starts off the
 //! frame, or runs past its right edge, paints the part that is visible and
@@ -22,12 +24,13 @@ pub fn paint(frame: &mut Frame, at: Point, text: &str, scale: u8, colour: Rgba) 
             pen.0 += font::advance(scale);
             continue;
         };
+        let (left, width) = font::ink(glyph);
         for row in 0..font::GLYPH_HEIGHT {
-            for column in 0..font::GLYPH_WIDTH {
+            for column in left..left + width {
                 if font::pixel(glyph, column, row) {
                     block(
                         frame,
-                        pen.0 + column * scale,
+                        pen.0 + (column - left) * scale,
                         pen.1 + row * scale,
                         scale,
                         colour,
@@ -35,7 +38,7 @@ pub fn paint(frame: &mut Frame, at: Point, text: &str, scale: u8, colour: Rgba) 
                 }
             }
         }
-        pen.0 += font::advance(scale);
+        pen.0 += font::advance_of(glyph, scale);
     }
 }
 
@@ -83,6 +86,29 @@ mod tests {
         assert_eq!(frame.color_at(Point::new(9, 0)), Some(Rgba::WHITE));
         assert_eq!(frame.color_at(Point::new(4, 6)), Some(Rgba::WHITE));
         assert_eq!(frame.color_at(Point::new(0, 6)), Some(Rgba::BLACK));
+    }
+
+    #[test]
+    fn a_text_is_as_wide_as_its_letters() {
+        let mut frame = Frame::new(20, 7).expect("a frame");
+
+        paint(&mut frame, Point::new(0, 0), "ii", 1, Rgba::WHITE);
+
+        assert_eq!(
+            frame.color_at(Point::new(4, 2)),
+            Some(Rgba::WHITE),
+            "the second letter follows the first one's own width"
+        );
+        assert_eq!(
+            frame.color_at(Point::new(2, 4)),
+            Some(Rgba::BLACK),
+            "a letter is separated from the next by one column"
+        );
+        assert_eq!(
+            frame.color_at(Point::new(3, 4)),
+            Some(Rgba::WHITE),
+            "the second letter stands where the first one ended"
+        );
     }
 
     #[test]

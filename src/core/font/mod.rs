@@ -7,8 +7,12 @@
 //! in a terminal without a second renderer.
 //!
 //! The glyphs themselves are in `glyphs`; this module is the font's
-//! interface: the shape of a character and the distance the pen moves after
-//! it.
+//! interface: the shape of a character, the width of its ink, and the
+//! distance the pen moves after it.
+//!
+//! The lowercase letters have their own shapes, standing on the x-height in
+//! the five rows above the baseline. A descender has no room in seven rows,
+//! so 'g', 'j', 'p', 'q' and 'y' are drawn without their tails.
 
 pub const GLYPH_WIDTH: i64 = 5;
 pub const GLYPH_HEIGHT: i64 = 7;
@@ -41,8 +45,40 @@ pub fn pixel(bits: u64, column: i64, row: i64) -> bool {
     (bits >> shift) & 1 == 1
 }
 
+/// The advance of the widest glyph: the fallback for a character the font
+/// does not have.
 pub fn advance(scale: i64) -> i64 {
     ADVANCE * scale
+}
+
+/// The ink of a glyph: the leftmost column that is set, and how many
+/// columns wide the ink is.
+///
+/// A word is as wide as its letters and not as wide as the widest letter
+/// times the number of letters, so the width is measured from the glyph
+/// itself. A blank glyph has no ink and is given two columns: the space
+/// between words is narrower than a letter, but it is not nothing.
+pub fn ink(bits: u64) -> (i64, i64) {
+    let mut left = GLYPH_WIDTH;
+    let mut right = -1;
+    for column in 0..GLYPH_WIDTH {
+        for row in 0..GLYPH_HEIGHT {
+            if pixel(bits, column, row) {
+                left = left.min(column);
+                right = right.max(column);
+            }
+        }
+    }
+    if right < 0 {
+        return (0, 2);
+    }
+    (left, right - left + 1)
+}
+
+/// How far the pen moves after a glyph, in pixels.
+pub fn advance_of(bits: u64, scale: i64) -> i64 {
+    let (_, width) = ink(bits);
+    (width + 1) * scale
 }
 
 mod glyphs;
