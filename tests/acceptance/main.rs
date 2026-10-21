@@ -71,3 +71,48 @@ fn an_svg_curve_is_refused_with_its_line() {
     assert_eq!(error.line, 2);
     assert!(error.problem.contains("`C`"));
 }
+
+#[test]
+fn an_svg_label_becomes_a_text_operation() {
+    let svg = include_str!("../../examples/text-panel.svg");
+
+    let document = oko::adapters::svg::translate(svg).expect("a supported export");
+    let scene =
+        oko::core::document::parse(&document).expect("the translator writes valid documents");
+
+    let directives: Vec<&str> = document
+        .lines()
+        .filter(|line| line.starts_with("text "))
+        .collect();
+    assert_eq!(
+        directives,
+        [
+            "text 6 3 \"OKO\" 3 #ff9d00",
+            "text 6 31 \"SYSTEM READY\" 1 #c9d1d9"
+        ]
+    );
+
+    let labels: Vec<oko::core::scene::Op> = scene
+        .ops()
+        .iter()
+        .filter(|op| matches!(op, oko::core::scene::Op::Text { .. }))
+        .cloned()
+        .collect();
+    assert_eq!(
+        labels,
+        [
+            oko::core::scene::Op::Text {
+                at: oko::core::geom::Point::new(6, 3),
+                text: "OKO".to_string(),
+                scale: 3,
+                color: oko::core::geom::Rgba::rgb(255, 157, 0),
+            },
+            oko::core::scene::Op::Text {
+                at: oko::core::geom::Point::new(6, 31),
+                text: "SYSTEM READY".to_string(),
+                scale: 1,
+                color: oko::core::geom::Rgba::rgb(201, 209, 217),
+            },
+        ]
+    );
+}

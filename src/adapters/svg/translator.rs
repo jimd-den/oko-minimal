@@ -8,7 +8,7 @@
 
 use super::error::SvgError;
 use super::xml::{Element, Event};
-use super::{paint, shapes, values};
+use super::{paint, shapes, text, values};
 use std::mem;
 
 #[derive(Default)]
@@ -16,6 +16,8 @@ pub struct Translator {
     document: String,
     stack: Vec<Frame>,
     offset: (i32, i32),
+    /// The styles of the open `<text>` and `<tspan>` elements, outermost first.
+    styles: Vec<text::Style>,
 }
 
 struct Frame {
@@ -30,6 +32,7 @@ impl Translator {
             match event {
                 Event::Start(element) => self.start(element)?,
                 Event::End { name, line } => self.end(&name, line)?,
+                Event::Text { content, line } => self.label(&content, line)?,
             }
         }
         if let Some(frame) = self.stack.last() {
@@ -52,9 +55,23 @@ impl Translator {
             "line" => shapes::line(&mut self.document, &element, at)?,
             "polyline" => shapes::polyline(&mut self.document, &element, at)?,
             "path" => shapes::path(&mut self.document, &element, at)?,
+            "text" => {
+                // A self-closing text has no content, and no style to leave behind.
+                if !element.closed {
+                    self.styles.push(text::Style::of_text(&element, at)?);
+                }
+            }
+            "tspan" => {
+                let Some(parent) = self.styles.last() else {
+                    return Err(element.error("a `<tspan>` must be inside a `<text>`"));
+                };
+                if !element.closed {
+                    self.styles.push(parent.of_span(&element, local)?);
+                }
+            }
             other => {
                 return Err(element.error(format!(
-                    "`{other}` is not supported; use svg, g, rect, line, polyline or path"
+                    "`{other}` is not supported; use svg, g, rect, line, polyline, path or text"
                 )));
             }
         }
@@ -80,8 +97,25 @@ impl Translator {
                 format!("`{name}` closes `{}`", frame.name),
             ));
         }
+        if matches!(name, "text" | "tspan") {
+            self.styles.pop();
+        }
         self.offset = frame.offset;
         Ok(())
+    }
+
+    /// A run of characters becomes one label, drawn where its element sits.
+    fn label(&mut self, content: &str, line: usize) -> Result<(), SvgError> {
+        let Some(style) = self.styles.last() else {
+            return Err(SvgError::new(
+                line,
+                "text is only supported inside a `<text>` or a `<tspan>`",
+            ));
+        };
+        let Some(label) = text::label(content, line)? else {
+            return Ok(());
+        };
+        text::emit(&mut self.document, style, &label, line)
     }
 
     fn local_offset(&self, element: &Element) -> Result<(i32, i32), SvgError> {

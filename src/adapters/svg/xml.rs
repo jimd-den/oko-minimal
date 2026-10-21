@@ -34,5 +34,13 @@ impl Element {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Event {
     Start(Element),
-    End { name: String, line: usize },
+    End {
+        name: String,
+        line: usize,
+    },
+    /// A run of character data. Whitespace-only runs are not reported.
+    Text {
+        content: String,
+        line: usize,
+    },
 }

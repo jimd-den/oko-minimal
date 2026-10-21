@@ -6,10 +6,11 @@
 //! readable, diffable, hot-reloadable, and independent of the tool that drew it.
 //!
 //! The translator is a whitelist, not a renderer. It reads `rect`, `line`,
-//! `polyline`, straight-line `path`, and `g` with a translation; it refuses
-//! curves, text, opacity, rotation and unknown elements by name and line. The
-//! output obeys the document parser's limits, so a translated file can never be
-//! rejected later for a size the translator accepted.
+//! `polyline`, straight-line `path`, `text` with its `tspan` lines, and `g`
+//! with a translation; it refuses curves, opacity, rotation and unknown
+//! elements by name and line. The output obeys the document parser's limits,
+//! so a translated file can never be rejected later for a size the translator
+//! accepted.
 //!
 //! This is the only new component in the authoring path. If the translator is
 //! wrong, the document it wrote is still readable, and the fix is a diff.
@@ -23,6 +24,7 @@ mod rectangle;
 mod scanner;
 mod shapes;
 mod tag;
+mod text;
 mod translator;
 mod values;
 mod xml;
@@ -62,6 +64,24 @@ mod tests {
             translate(svg).expect("a translated path"),
             "rect 2 2 6 4 #102030\n"
         );
+    }
+
+    #[test]
+    fn an_svg_text_becomes_a_text_directive() {
+        let svg = "<svg viewBox=\"0 0 80 48\"><text x=\"6\" y=\"24\" font-size=\"21\" fill=\"#ff9d00\">OKO</text></svg>";
+
+        assert_eq!(
+            translate(svg).expect("a translated label"),
+            "text 6 3 \"OKO\" 3 #ff9d00\n"
+        );
+    }
+
+    #[test]
+    fn a_self_closing_text_leaves_no_style_behind() {
+        let error =
+            translate("<svg viewBox=\"0 0 20 20\"><text/>stray</svg>").expect_err("a stray label");
+
+        assert!(error.problem.contains("only supported inside"));
     }
 
     #[test]

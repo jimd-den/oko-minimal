@@ -1,9 +1,10 @@
 //! Reading the stream of tags an SVG export contains.
 //!
-//! This is not an XML parser. It reads elements, attributes, comments and the
-//! XML declaration, and it refuses doctypes, entities and text content. That is
-//! the whole input surface of the translator, and keeping the surface this small
-//! is what makes "bounded" a property of the code rather than a promise.
+//! This is not an XML parser. It reads elements, attributes, comments, the XML
+//! declaration and runs of character data, and it refuses doctypes and
+//! entities. That is the whole input surface of the translator, and keeping the
+//! surface this small is what makes "bounded" a property of the code rather
+//! than a promise.
 //!
 //! Every limit is a refusal, never a truncation: too many elements, too many
 //! attributes, an oversized value, or an unterminated construct stops with a
@@ -19,18 +20,19 @@ pub fn events(source: &str) -> Result<Vec<Event>, SvgError> {
     let mut events = Vec::new();
 
     while let Some(byte) = cursor.byte() {
-        if byte == b'<' {
-            if let Some(event) = header(&mut cursor)? {
-                if events.len() >= MAX_ELEMENTS {
-                    return Err(SvgError::new(
-                        cursor.line,
-                        "the document has too many elements",
-                    ));
-                }
-                events.push(event);
-            }
+        let event = if byte == b'<' {
+            header(&mut cursor)?
         } else {
-            text(&mut cursor)?;
+            text(&mut cursor)?
+        };
+        if let Some(event) = event {
+            if events.len() >= MAX_ELEMENTS {
+                return Err(SvgError::new(
+                    cursor.line,
+                    "the document has too many elements",
+                ));
+            }
+            events.push(event);
         }
     }
 
@@ -54,7 +56,13 @@ fn header(cursor: &mut Cursor<'_>) -> Result<Option<Event>, SvgError> {
     tag::read(cursor)
 }
 
-fn text(cursor: &mut Cursor<'_>) -> Result<(), SvgError> {
+/// A run of character data.
+///
+/// Whitespace between elements carries nothing, so it stays ignored. A run
+/// with a word in it is delivered as it was written: entities are refused
+/// rather than decoded, because a decoded `&amp;` would be text the reader
+/// never saw.
+fn text(cursor: &mut Cursor<'_>) -> Result<Option<Event>, SvgError> {
     let source = cursor.source();
     let rest = &source.as_bytes()[cursor.at..];
     let end = cursor.at
@@ -62,12 +70,17 @@ fn text(cursor: &mut Cursor<'_>) -> Result<(), SvgError> {
             .iter()
             .position(|&byte| byte == b'<')
             .unwrap_or(rest.len());
-
-    if !source[cursor.at..end].trim().is_empty() {
-        return Err(cursor.error("text content is not supported"));
-    }
+    let line = cursor.line;
+    let content = source[cursor.at..end].to_string();
     cursor.skip_to(end);
-    Ok(())
+
+    if content.contains('&') {
+        return Err(SvgError::new(line, "entities are not allowed"));
+    }
+    if content.trim().is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(Event::Text { content, line }))
 }
 
 #[cfg(test)]
@@ -89,10 +102,24 @@ mod tests {
     }
 
     #[test]
-    fn text_content_is_refused() {
-        let error = events("<text>hello</text>").expect_err("text");
+    fn a_run_of_text_is_delivered() {
+        let events = events("<text>hello</text>").expect("a label");
+
+        assert_eq!(events.len(), 3);
+        assert_eq!(
+            events[1],
+            Event::Text {
+                content: "hello".to_string(),
+                line: 1,
+            }
+        );
+    }
+
+    #[test]
+    fn an_entity_in_a_run_is_refused() {
+        let error = events("<text>a&amp;b</text>").expect_err("an entity");
 
         assert_eq!(error.line, 1);
-        assert!(error.problem.contains("text content"));
+        assert!(error.problem.contains("entities"));
     }
 }

@@ -30,10 +30,17 @@ is an error, not a warning.
 **Elements.** `<text>` and `<tspan>` are supported. Every other element keeps
 its current behaviour.
 
-**Position.** `x` and `y` are the label's left edge and its top edge, in
-pixels, as in the document's own text directive. A `<tspan>` may carry its own
-`x` and `y`; otherwise it inherits the `<text>`'s. A `dy` adds to the y it
-inherits, which is how exporters express a second line.
+**Position.** `x` and `y` are the label's left edge and its baseline, in
+pixels, as SVG has them: a label is placed by the line it sits on, not by the
+top of its box. The document's own text directive wants a top edge, so the
+translator converts: the top is the baseline minus the height of the glyph,
+and the height is seven pixels times the scale. That conversion is exact
+rather than approximate, because the built-in font has no descenders — its
+bottom row is the baseline.
+
+A `<tspan>` may carry its own `x` and `y`; otherwise it inherits the
+`<text>`'s. A `dy` adds to the baseline it inherits, which is how exporters
+express a second line.
 
 **Size.** `font-size` is read from the attribute or from a `style` attribute
 of the form `font-size: 14px`. A missing size is 7.
@@ -45,6 +52,20 @@ measures a glyph. A 21-pixel label becomes scale 3, a 7-pixel label scale 1.
 
 **Colour.** `fill` is read exactly as it is for other shapes, with black for a
 missing fill and no text for `fill="none"`.
+
+**Precedence.** Where a size is stated twice, the `font-size` attribute wins
+over a `style` attribute, even though CSS says the opposite. The attribute is
+what an exporter writes last, and what a person edits by hand.
+
+**Inheritance.** A `<tspan>` inherits the size and the colour of its `<text>`,
+not only its position. An exporter that sets the size once on the text expects
+the spans to follow it.
+
+**Lengths.** A length may carry `px` or nothing. A position list such as
+`x="10 20"` is refused rather than guessed at, and the document's own limits -
+a label of at most 128 characters, coordinates within plus or minus 32767 -
+are enforced here, so a translated label can never be refused later by the
+parser.
 
 **Content.** A run is trimmed, and internal whitespace runs collapse to one
 space. An empty result is ignored. Every character must exist in the built-in
