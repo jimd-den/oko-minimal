@@ -145,10 +145,7 @@ fn the_command_writes_the_panel_out_and_the_report_away() {
     assert!(output.status.success());
     assert_eq!(String::from_utf8_lossy(&output.stdout), "");
     let report = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        report.contains("`A`"),
-        "the report names the arc: {report}"
-    );
+    assert!(report.contains("`A`"), "the report names the arc: {report}");
     assert!(
         report.contains(":2:"),
         "the report names the line: {report}"

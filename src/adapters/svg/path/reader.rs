@@ -7,7 +7,7 @@
 use super::super::error::SvgError;
 
 /// The largest coordinate a path may name.
-const MAX_COORDINATE: f64 = 1_000_000.0;
+pub(super) const MAX_COORDINATE: f64 = 1_000_000.0;
 
 pub(super) struct Reader<'a> {
     bytes: &'a [u8],
@@ -88,5 +88,19 @@ impl<'a> Reader<'a> {
 
     pub(super) fn pair(&mut self) -> Result<(f64, f64), SvgError> {
         Ok((self.number()?, self.number()?))
+    }
+
+    /// One pair of numbers, absolute or relative to a point.
+    pub(super) fn pair_at(
+        &mut self,
+        at: (f64, f64),
+        relative: bool,
+    ) -> Result<(f64, f64), SvgError> {
+        let (x, y) = self.pair()?;
+        Ok(if relative {
+            (at.0 + x, at.1 + y)
+        } else {
+            (x, y)
+        })
     }
 }

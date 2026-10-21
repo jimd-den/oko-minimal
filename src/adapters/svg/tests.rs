@@ -79,7 +79,10 @@ fn a_curve_is_drawn_as_a_path_directive() {
         translation.document,
         "path M 0 0 C 1 1 2 2 3 3 fill #000000\nrect 1 1 2 2 #ff9d00\n"
     );
-    assert!(translation.skipped.is_empty(), "a curve is drawn, not refused");
+    assert!(
+        translation.skipped.is_empty(),
+        "a curve is drawn, not refused"
+    );
 }
 
 #[test]
@@ -100,8 +103,14 @@ fn a_triangle_is_filled_rather_than_refused() {
 
     let translation = translate(svg).expect("a panel with a triangle");
 
-    assert_eq!(translation.document, "path M 1 1 L 7 1 L 1 7 Z fill #ff9d00\n");
-    assert!(translation.skipped.is_empty(), "a triangle is drawn, not refused");
+    assert_eq!(
+        translation.document,
+        "path M 1 1 L 7 1 L 1 7 Z fill #ff9d00\n"
+    );
+    assert!(
+        translation.skipped.is_empty(),
+        "a triangle is drawn, not refused"
+    );
 
     let scene = crate::core::document::parse(&translation.document).expect("a document");
     let frame = crate::core::raster::render(&scene, 8, 8).expect("a frame");

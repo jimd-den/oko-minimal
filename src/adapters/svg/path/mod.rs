@@ -1,27 +1,35 @@
-//! The bounded path grammar: `d` attributes without curves.
+//! The bounded path grammar: `d` attributes, curves and all.
 //!
-//! SVG paths can describe anything. A panel is made of straight edges, so this
-//! module understands exactly `M`, `L`, `H`, `V` and `Z`, absolute and
-//! relative. A path that uses anything else is not refused: it is reported as
-//! undrawable, with the command named, and the shapes around it still draw.
+//! SVG paths can describe anything. A panel is made of shapes, so this
+//! module understands exactly the commands a panel can draw: `M`, `L`, `H`,
+//! `V`, `C`, `S`, `Q`, `T` and `Z`, absolute and relative, and it produces
+//! the segments the core draws. A path that uses anything else is not
+//! refused: it is reported as undrawable, with the command named, and the
+//! shapes around it still draw.
 //!
-//! One subpath is one outline. Points are quantised to whole pixels here,
-//! because the panel format has no subpixel geometry.
+//! Points are quantised to whole pixels here, because the panel format has
+//! no subpixel geometry. That is a property of the format, like the 5x7
+//! font, and it is not reported per shape.
 
+mod curve;
+#[cfg(test)]
+mod curve_tests;
+mod grammar;
 mod reader;
+mod state;
 #[cfg(test)]
 mod tests;
 
 use super::error::SvgError;
 use crate::core::geom::Point;
-use reader::Reader;
+use crate::core::path::{Path as CorePath, Segment};
 
 pub const MAX_POINTS: usize = 4096;
 
-/// The largest coordinate a path may name.
-const MAX_COORDINATE: f64 = 1_000_000.0;
-
-/// What a path turned out to be.
+/// The straight edges of a path, for the rectangle check.
+///
+/// This is the narrow answer the rectangle check asks for. The path a panel
+/// draws is `Parsed`: the segments the core draws.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Path {
     /// The straight edges of one shape.
@@ -37,108 +45,93 @@ pub struct Outline {
     pub closed: bool,
 }
 
-/// Read the edges of a path.
-pub fn outline(source: &str, line: usize) -> Result<Path, SvgError> {
-    let mut reader = Reader::new(source, line);
+/// A path read out of an export.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Parsed {
+    /// The segments of a path this console draws.
+    Segments(CorePath),
+    /// A path this console cannot draw, and why.
+    Undrawn(String),
+}
+
+/// Read a path into the segments the core draws.
+pub fn segments(source: &str, line: usize) -> Result<Parsed, SvgError> {
+    grammar::read(source, line)
+}
+
+/// The straight edges of a path, if it is one shape of straight edges.
+///
+/// A path with a curve, or with more than one shape, has no straight
+/// outline: the rectangle check needs one, and a path that is not a
+/// rectangle is drawn as a path.
+pub fn outline_of(shape: &CorePath) -> Option<Outline> {
     let mut points: Vec<Point> = Vec::new();
-    let mut current = (0.0, 0.0);
-    let mut origin = (0.0, 0.0);
-    let mut command = None;
     let mut closed = false;
-
-    while reader.peek().is_some() {
-        reader.separators();
-        if reader.peek().is_none() {
-            break;
-        }
-
-        if let Some(byte) = reader.command() {
-            if !matches!(
-                byte,
-                b'M' | b'm' | b'L' | b'l' | b'H' | b'h' | b'V' | b'v' | b'Z' | b'z'
-            ) {
-                return Ok(Path::Undrawn(format!(
-                    "the path uses `{letter}`, which this console does not draw",
-                    letter = byte as char
-                )));
-            }
-            command = Some(byte);
-        } else if command.is_none() {
-            return Err(SvgError::new(line, "a path must start with a command"));
-        }
-
-        let step = command.expect("a command was read above");
-        match step {
-            b'M' | b'm' => {
+    for segment in &shape.segments {
+        match segment {
+            Segment::Move { to } => {
                 if !points.is_empty() {
-                    return Ok(Path::Undrawn(
-                        "the path has more than one shape, which this console does not draw"
-                            .to_string(),
-                    ));
+                    return None;
                 }
-                let (x, y) = reader.pair()?;
-                current = if step == b'm' {
-                    (current.0 + x, current.1 + y)
-                } else {
-                    (x, y)
-                };
-                origin = current;
-                push(&mut points, current, line)?;
-                command = Some(if step == b'm' { b'l' } else { b'L' });
+                points.push(*to);
             }
-            b'L' | b'l' => {
-                let (x, y) = reader.pair()?;
-                current = if step == b'l' {
-                    (current.0 + x, current.1 + y)
-                } else {
-                    (x, y)
-                };
-                push(&mut points, current, line)?;
-            }
-            b'H' | b'h' => {
-                let x = reader.number()?;
-                current.0 = if step == b'h' { current.0 + x } else { x };
-                push(&mut points, current, line)?;
-            }
-            b'V' | b'v' => {
-                let y = reader.number()?;
-                current.1 = if step == b'v' { current.1 + y } else { y };
-                push(&mut points, current, line)?;
-            }
-            b'Z' | b'z' => {
-                closed = true;
-                current = origin;
-                command = None;
-            }
-            _ => unreachable!("the command was checked above"),
+            Segment::Line { to } => points.push(*to),
+            Segment::Close => closed = true,
+            Segment::Cubic { .. } | Segment::Quadratic { .. } => return None,
         }
     }
-
     if points.is_empty() {
-        return Err(SvgError::new(line, "a path needs at least one point"));
+        return None;
     }
     // A closed path that returns to its start says so twice: the `Z` already
     // closes it, and the last edge is the one the writer meant.
     if closed && points.len() > 1 && points[points.len() - 1] == points[0] {
         points.pop();
     }
-    Ok(Path::Edges(Outline { points, closed }))
+    Some(Outline { points, closed })
 }
 
-fn push(points: &mut Vec<Point>, (x, y): (f64, f64), line: usize) -> Result<(), SvgError> {
-    if points.len() >= MAX_POINTS {
-        return Err(SvgError::new(line, "a path has too many points"));
+/// Read the straight edges of a path.
+///
+/// This is the outline the rectangle check asks for. A path with a curve is
+/// not one, and says so.
+pub fn outline(source: &str, line: usize) -> Result<Path, SvgError> {
+    match segments(source, line)? {
+        Parsed::Segments(shape) => Ok(match outline_of(&shape) {
+            Some(outline) => Path::Edges(outline),
+            None => Path::Undrawn("the path is not one shape of straight edges".to_string()),
+        }),
+        Parsed::Undrawn(reason) => Ok(Path::Undrawn(reason)),
     }
-    points.push(Point::new(round(x, line)?, round(y, line)?));
-    Ok(())
 }
 
-fn round(value: f64, line: usize) -> Result<i32, SvgError> {
-    if !value.is_finite() || value.abs() > MAX_COORDINATE {
-        return Err(SvgError::new(
-            line,
-            "a path coordinate is outside the drawable range",
-        ));
-    }
-    Ok(value.round() as i32)
+/// A path moved by an offset.
+///
+/// Every point moves: the ends, and the control points of the curves, so a
+/// curve is moved whole and not bent.
+pub fn translated(shape: &CorePath, at: (i32, i32)) -> CorePath {
+    let moved = |point: &Point| Point::new(point.x + at.0, point.y + at.1);
+    let segments = shape
+        .segments
+        .iter()
+        .map(|segment| match segment {
+            Segment::Move { to } => Segment::Move { to: moved(to) },
+            Segment::Line { to } => Segment::Line { to: moved(to) },
+            Segment::Cubic {
+                control1,
+                control2,
+                to,
+            } => Segment::Cubic {
+                control1: moved(control1),
+                control2: moved(control2),
+                to: moved(to),
+            },
+            Segment::Quadratic { control, to } => Segment::Quadratic {
+                control: moved(control),
+                to: moved(to),
+            },
+            Segment::Close => Segment::Close,
+        })
+        .collect();
+    CorePath { segments }
 }
