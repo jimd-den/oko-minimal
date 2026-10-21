@@ -87,3 +87,87 @@ pub fn between(from: &Shape, to: &Shape, progress: f64) -> Shape {
         _ => from.clone(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::geom::{Point, Rect, Rgba};
+    use crate::core::path::{Path, Segment};
+
+    fn rect(x: i32) -> Shape {
+        Shape::Rect {
+            area: Rect::new(x, 0, 4, 4),
+            color: Rgba::WHITE,
+        }
+    }
+
+    #[test]
+    fn a_shape_is_halfway_between_two_shapes() {
+        let halfway = between(&rect(0), &rect(10), 0.5);
+
+        assert_eq!(
+            halfway,
+            Shape::Rect {
+                area: Rect::new(5, 0, 4, 4),
+                color: Rgba::WHITE
+            }
+        );
+    }
+
+    #[test]
+    fn a_texts_label_does_not_change() {
+        let one = Shape::Text {
+            at: Point::new(0, 0),
+            text: "OK".to_string(),
+            scale: 1,
+            color: Rgba::WHITE,
+        };
+        let other = Shape::Text {
+            at: Point::new(10, 0),
+            text: "OK".to_string(),
+            scale: 1,
+            color: Rgba::BLACK,
+        };
+
+        let halfway = between(&one, &other, 0.5);
+
+        assert_eq!(
+            halfway,
+            Shape::Text {
+                at: Point::new(5, 0),
+                text: "OK".to_string(),
+                scale: 1,
+                color: Rgba::rgb(128, 128, 128)
+            }
+        );
+    }
+
+    #[test]
+    fn a_paths_segments_move() {
+        let one = Shape::Path {
+            path: Path {
+                segments: vec![Segment::Move {
+                    to: Point::new(0, 0),
+                }],
+            },
+            fill: Some(Rgba::WHITE),
+            stroke: None,
+        };
+        let other = Shape::Path {
+            path: Path {
+                segments: vec![Segment::Move {
+                    to: Point::new(0, 10),
+                }],
+            },
+            fill: Some(Rgba::BLACK),
+            stroke: None,
+        };
+
+        let halfway = between(&one, &other, 0.5);
+
+        let Shape::Path { path, .. } = halfway else {
+            panic!("a path is a path");
+        };
+        assert_eq!(path.segments[0], Segment::Move { to: Point::new(0, 5) });
+    }
+}
