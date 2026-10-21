@@ -17,7 +17,9 @@
 
 mod cursor;
 mod emit;
+mod entity;
 mod error;
+mod names;
 mod paint;
 pub mod path;
 mod rectangle;
@@ -133,6 +135,16 @@ mod tests {
         }
         svg.push_str("</svg>");
         svg
+    }
+
+    #[test]
+    fn a_named_colour_is_translated() {
+        let svg = r##"<svg viewBox="0 0 10 10"><rect x="1" y="2" width="3" height="4" fill="white"/></svg>"##;
+
+        assert_eq!(
+            translate(svg).expect("a named colour"),
+            "rect 1 2 3 4 #ffffff\n"
+        );
     }
 
     #[test]

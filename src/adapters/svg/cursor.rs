@@ -2,7 +2,9 @@
 //!
 //! All the low-level reading lives here: peeking, skipping, names, quoted
 //! values, line counting. The grammar above it never indexes a string, and this
-//! layer never decides what a tag means.
+//! layer never decides what a tag means. An entity reference is not refused
+//! here: this layer reads the bytes, and the layer that understands the
+//! grammar decodes them.
 
 use super::error::SvgError;
 use super::xml::MAX_VALUE;
@@ -108,9 +110,6 @@ impl<'a> Cursor<'a> {
                 }
                 let value = self.source[start..self.at].to_string();
                 self.skip_to(self.at + 1);
-                if value.contains('&') {
-                    return Err(self.error("entities are not allowed"));
-                }
                 return Ok(value);
             }
             if byte == b'<' {
