@@ -117,6 +117,13 @@ mod tests {
     }
 
     #[test]
+    fn the_punctuation_an_export_writes_is_in_the_font() {
+        for character in ['#', '&', ';'] {
+            assert!(supports(character), "`{character}` is in the font");
+        }
+    }
+
+    #[test]
     fn a_space_is_blank() {
         let space = glyph(' ').expect("a space");
 
