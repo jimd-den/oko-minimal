@@ -111,12 +111,12 @@ fn a_path_with_a_curve_has_no_straight_outline() {
 }
 
 #[test]
-fn an_arc_is_reported_by_name() {
+fn an_arc_is_read_as_cubics() {
     let parsed = segments("M0 0 A 5 5 0 0 1 10 10", 4).expect("an arc");
 
-    assert_eq!(
-        parsed,
-        Parsed::Undrawn("the path uses `A`, which this console does not draw".to_string())
+    assert!(
+        matches!(parsed, Parsed::Segments(_)),
+        "an arc is drawn, not refused"
     );
 }
 

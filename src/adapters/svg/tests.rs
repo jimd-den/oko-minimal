@@ -150,13 +150,36 @@ fn a_panel_of_the_whole_budget_is_written() {
 
 #[test]
 fn every_shape_left_out_is_named_in_the_report() {
-    let svg = "<svg viewBox=\"0 0 8 8\">\n<circle cx=\"4\" cy=\"4\" r=\"2\"/>\n<path d=\"M0 0 A 5 5 0 0 1 8 8\" fill=\"#000000\"/>\n</svg>";
+    let svg = "<svg viewBox=\"0 0 8 8\">\n<circle cx=\"4\" cy=\"4\" r=\"2\"/>\n<rect x=\"1\" y=\"1\" width=\"2\" height=\"2\" fill=\"#000000\" stroke=\"#ffffff\"/>\n</svg>";
 
     let translation = translate(svg).expect("an export with holes");
 
     assert_eq!(reasons(&translation).len(), 2);
     assert!(reasons(&translation)[0].contains("circle"));
-    assert!(reasons(&translation)[1].contains("`A`"));
+    assert!(reasons(&translation)[1].contains("stroke"));
+}
+
+#[test]
+fn an_arc_is_drawn_as_a_path_directive() {
+    let svg =
+        "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 A 4 4 0 0 1 4 4\" fill=\"#000000\"/>\n</svg>";
+
+    let translation = translate(svg).expect("a panel with an arc");
+
+    assert!(
+        translation.skipped.is_empty(),
+        "an arc is drawn, not refused"
+    );
+
+    let scene = crate::core::document::parse(&translation.document).expect("a document");
+    let crate::core::scene::Op::Path { path, .. } = &scene.ops()[0] else {
+        panic!("the arc is a path operation");
+    };
+    assert_eq!(path.segments.len(), 2, "a move and one cubic");
+    assert!(matches!(
+        path.segments[1],
+        crate::core::path::Segment::Cubic { .. }
+    ));
 }
 
 /// An SVG of polylines, one per line, each writing four operations.
