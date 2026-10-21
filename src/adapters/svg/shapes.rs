@@ -144,7 +144,7 @@ pub fn path(
         emit::rect(document, area, colour, element.line)?;
         return Ok(Outcome::Drawn);
     }
-    emit::path(document, &shape, fill, stroke, element.line)?;
+    emit::path::write(document, &shape, fill, stroke, element.line)?;
     Ok(Outcome::Drawn)
 }
 
