@@ -109,3 +109,48 @@ fn a_frame_is_the_size_it_was_asked_for() {
     );
     assert_eq!(frame.color_at(Point::new(8, 3)), None);
 }
+
+/// A panel with a shape that moves to the right over a second.
+const MOVING: &str = "clear #000000\nrect 0 0 4 4 #ff0000 to 4 0 4 4 #ff0000 over 1s";
+
+#[test]
+fn a_moving_shape_is_painted_again_at_a_later_moment() {
+    let mut runtime = runtime(8, 4);
+    runtime.document(MOVING).expect("a valid document");
+
+    let painted = runtime.tick(500);
+
+    assert!(painted, "the moment brought a new picture");
+    let frame = runtime.frame().expect("a frame");
+    assert_eq!(
+        frame.color_at(Point::new(2, 0)),
+        Some(crate::core::geom::Rgba::rgb(255, 0, 0)),
+        "the shape has moved halfway"
+    );
+}
+
+#[test]
+fn the_same_moment_is_painted_once() {
+    let mut runtime = runtime(8, 4);
+    runtime.document(MOVING).expect("a valid document");
+
+    assert!(runtime.tick(500));
+    assert!(!runtime.tick(500), "the same moment brings no new picture");
+}
+
+#[test]
+fn a_panel_with_no_motion_is_painted_once_and_never_again() {
+    let mut runtime = runtime(8, 4);
+    runtime.document("clear #ff0000").expect("a valid document");
+
+    assert!(!runtime.tick(100), "a still panel is not painted again");
+}
+
+#[test]
+fn the_picture_settles_when_the_timeline_has_ended() {
+    let mut runtime = runtime(8, 4);
+    runtime.document(MOVING).expect("a valid document");
+
+    assert!(runtime.tick(1000), "the end of the timeline is painted");
+    assert!(!runtime.tick(1100), "the picture has come to rest");
+}

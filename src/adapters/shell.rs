@@ -13,7 +13,7 @@
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use crate::core::session::Effect;
 
@@ -22,8 +22,13 @@ use super::presenter;
 use super::runtime::Runtime;
 use super::terminal::Terminal;
 
-/// How long to wait for a key before looking at the file.
-const TICK: Duration = Duration::from_millis(100);
+/// How long the loop waits for a key, and how often the picture is looked at.
+///
+/// The panel is a picture that moves, so the loop turns at the frame rate.
+/// The file's timestamp is read on the same turn: a stat is cheap, and a
+/// hundred-millisecond poll was a number chosen for the file rather than
+/// for the picture.
+const FRAME: Duration = Duration::from_millis(16);
 
 /// The alternate screen: the panel does not scroll the history away.
 const ALTERNATE: &str = "\x1b[?1049h";
@@ -41,8 +46,10 @@ pub fn run(path: &Path) -> io::Result<()> {
     let mut out = io::stdout();
 
     let mut seen = stamp(path);
+    let mut origin = Instant::now();
     if let Some(text) = read(path) {
         load(&mut runtime, &text);
+        origin = Instant::now();
         present(&mut out, &runtime)?;
     }
 
@@ -54,7 +61,7 @@ pub fn run(path: &Path) -> io::Result<()> {
     let mut buffer = [0u8; 64];
     let mut running = true;
     while running {
-        let count = terminal.read(&mut buffer, TICK)?;
+        let count = terminal.read(&mut buffer, FRAME)?;
         if count > 0 {
             decoder.feed(&buffer[..count]);
             while let Some(event) = decoder.event() {
@@ -63,13 +70,17 @@ pub fn run(path: &Path) -> io::Result<()> {
                 }
             }
         }
-        let now = stamp(path);
-        if now != seen {
-            seen = now;
+        let stamp = stamp(path);
+        if stamp != seen {
+            seen = stamp;
             if let Some(text) = read(path) {
                 load(&mut runtime, &text);
+                origin = Instant::now();
                 present(&mut out, &runtime)?;
             }
+        }
+        if runtime.tick(origin.elapsed().as_millis() as u64) {
+            present(&mut out, &runtime)?;
         }
     }
 

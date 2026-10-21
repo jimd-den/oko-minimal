@@ -28,6 +28,10 @@ pub struct Runtime {
     scene: Option<Scene>,
     frame: Option<Frame>,
     size: (u32, u32),
+    /// The moment the picture was last painted at.
+    at: Option<u64>,
+    /// Whether the picture has come to rest at the end of the timeline.
+    settled: bool,
 }
 
 impl Runtime {
@@ -38,6 +42,8 @@ impl Runtime {
             scene: None,
             frame: None,
             size: (width, height),
+            at: None,
+            settled: false,
         }
     }
 
@@ -62,6 +68,8 @@ impl Runtime {
         match document::parse(text) {
             Ok(scene) => {
                 self.scene = Some(scene);
+                self.at = None;
+                self.settled = false;
                 self.render();
                 Ok(())
             }
@@ -78,6 +86,29 @@ impl Runtime {
         self.session.dispatch(event)
     }
 
+    /// The clock says the time is now. Paint the panel at this moment if the
+    /// picture has changed.
+    ///
+    /// Contract:
+    ///   - `now` is the milliseconds since the document arrived.
+    ///   - True when the frame is new and should be painted.
+    ///   - A panel with no motion is painted once, when it is loaded.
+    ///   - After the timeline's end the picture has come to rest and stays.
+    pub fn tick(&mut self, now: u64) -> bool {
+        let Some(scene) = self.scene.as_ref() else {
+            return false;
+        };
+        if scene.duration() == 0 || self.settled || self.at == Some(now) {
+            return false;
+        }
+        self.at = Some(now);
+        if now >= scene.duration() {
+            self.settled = true;
+        }
+        self.render_at(now);
+        true
+    }
+
     /// The frame on the screen, if there is one.
     pub fn frame(&self) -> Option<&Frame> {
         self.frame.as_ref()
@@ -85,10 +116,16 @@ impl Runtime {
 
     /// Draw the last good document again, at the current size.
     fn render(&mut self) {
+        let now = self.at.unwrap_or(0);
+        self.render_at(now);
+    }
+
+    /// Draw the document as it is at this moment.
+    fn render_at(&mut self, now: u64) {
         let frame = self
             .scene
             .as_ref()
-            .and_then(|scene| raster::render(scene, self.size.0, self.size.1));
+            .and_then(|scene| raster::render(&scene.at(now), self.size.0, self.size.1));
         self.frame = frame;
     }
 }
