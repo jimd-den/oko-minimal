@@ -35,8 +35,9 @@ a stroke colour, or both, and either may be absent.
   language the SVG path reader already speaks:
   `path M 10 10 C 20 0 30 10 Z fill #ff9d00`, with `M`, `L`, `C`, `Q` and `Z`
   as the commands, and `fill` and `stroke` naming the paints at the end.
-  A path that states neither paint is a stroke in the current colour, as SVG
-  has it; the document says so.
+  A path must state at least one paint. A path that states neither is
+  refused, because the document has no current colour to inherit, and a
+  shape nobody can see is a shape nobody can fix.
 - The renderer samples a curve into a polyline before it draws, and fills the
   polyline with the non-zero winding rule, which is SVG's default. The
   sampling is a property of the *renderer*, not of the document: the
