@@ -1,0 +1,23 @@
+# The whole-repo gate, on every push and every pull request.
+#
+# `make check` is the gate: the line budget, the format, the types, clippy and
+# the tests. It is the same command the author runs, so a green run here
+# means the same thing as a green run there.
+name: gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup component add rustfmt clippy
+      - name: The whole-repo gate
+        run: make check

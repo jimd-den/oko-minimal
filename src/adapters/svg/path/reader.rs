@@ -90,6 +90,31 @@ impl<'a> Reader<'a> {
         Ok((self.number()?, self.number()?))
     }
 
+    /// A flag: one character, `0` or `1`.
+    ///
+    /// The flags of an arc command are flags, not numbers, so they are one
+    /// character each: in `A 10 10 0 0110 0` the flags are `0` and `1`, and
+    /// the point that follows is (10, 0). Reading the second flag as a
+    /// number would make it eleven.
+    pub(super) fn flag(&mut self) -> Result<bool, SvgError> {
+        self.separators();
+        match self.peek() {
+            Some(b'0') => {
+                self.at += 1;
+                Ok(false)
+            }
+            Some(b'1') => {
+                self.at += 1;
+                Ok(true)
+            }
+            Some(byte) => Err(SvgError::new(
+                self.line,
+                format!("`{}` is not a flag of 0 or 1", byte as char),
+            )),
+            None => Err(SvgError::new(self.line, "a path flag is missing")),
+        }
+    }
+
     /// One pair of numbers, absolute or relative to a point.
     pub(super) fn pair_at(
         &mut self,

@@ -1,133 +1,115 @@
-//! Presenting a frame to a terminal.
+//! The terminal, as a device: raw mode, a read with a timeout, the size of
+//! the window, and the way back to the settings that were there before.
 //!
-//! A character cell is roughly twice as tall as it is wide, so one cell carries
-//! two square pixels: the upper half block paints the top pixel as foreground
-//! and the bottom pixel as background. The encoder is pure — it returns the
-//! bytes a terminal would receive — so the whole presenter can be tested
-//! without a terminal.
-//!
-//! Twenty-four bit colour is assumed. A palette fallback is a separate adapter,
-//! because a terminal that cannot show true colour still needs a correct frame,
-//! not a different renderer.
+//! Everything here can fail for reasons the program cannot control, and
+//! everything here touches a device. The pure half of the terminal
+//! adapter, the bytes a frame is made of, is in `presenter`.
 
-use crate::core::document::{self, ParseError};
-use crate::core::frame::Frame;
-use crate::core::geom::Rgba;
-use crate::core::raster;
+use std::io;
+use std::os::fd::RawFd;
+use std::time::Duration;
 
-/// The upper half block: `▀`.
-const HALF_BLOCK: char = '▀';
+use libc::{self, c_int, termios};
 
-pub fn encode(frame: &Frame) -> String {
-    let mut bytes = String::new();
-    let mut y = 0;
+/// The terminal, taken over.
+pub struct Terminal {
+    fd: RawFd,
+    original: termios,
+    raw: bool,
+}
 
-    while let Some(top) = frame.row(y) {
-        let bottom = frame.row(y + 1).unwrap_or(top);
-        let mut previous = None;
-
-        for (upper, lower) in top.iter().zip(bottom) {
-            let colors = (*upper, *lower);
-            if previous != Some(colors) {
-                bytes.push_str(&escape(colors.0, colors.1));
-                previous = Some(colors);
-            }
-            bytes.push(HALF_BLOCK);
+impl Terminal {
+    /// Take the terminal on the given descriptor.
+    pub fn open(fd: RawFd) -> io::Result<Terminal> {
+        let mut original = unsafe { std::mem::zeroed::<termios>() };
+        if unsafe { libc::tcgetattr(fd, &mut original) } != 0 {
+            return Err(io::Error::last_os_error());
         }
-
-        bytes.push_str("\x1b[0m\n");
-        y += 2;
+        Ok(Terminal {
+            fd,
+            original,
+            raw: false,
+        })
     }
 
-    bytes
-}
+    /// Take the terminal on standard input.
+    pub fn stdin() -> io::Result<Terminal> {
+        Terminal::open(libc::STDIN_FILENO)
+    }
 
-fn escape(top: Rgba, bottom: Rgba) -> String {
-    format!(
-        "\x1b[38;2;{};{};{}m\x1b[48;2;{};{};{}m",
-        top.r, top.g, top.b, bottom.r, bottom.g, bottom.b
-    )
-}
-
-pub fn paint(document: &str, width: u32, height: u32) -> Result<String, PaintError> {
-    let scene = document::parse(document)?;
-    let frame =
-        raster::render(&scene, width, height).ok_or(PaintError::FrameTooLarge { width, height })?;
-    Ok(encode(&frame))
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum PaintError {
-    Document(Vec<ParseError>),
-    FrameTooLarge { width: u32, height: u32 },
-}
-
-impl std::fmt::Display for PaintError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Document(errors) => {
-                for error in errors {
-                    writeln!(formatter, "{error}")?;
-                }
-                Ok(())
-            }
-            Self::FrameTooLarge { width, height } => {
-                write!(formatter, "a {width}x{height} frame is too large")
-            }
+    /// Turn off the line discipline, so a key arrives when it is pressed.
+    pub fn set_raw(&mut self) -> io::Result<()> {
+        let mut raw = self.original;
+        raw.c_lflag &= !(libc::ICANON | libc::ECHO);
+        raw.c_iflag &= !(libc::IXON);
+        raw.c_cc[libc::VMIN] = 1;
+        raw.c_cc[libc::VTIME] = 0;
+        if unsafe { libc::tcsetattr(self.fd, libc::TCSANOW, &raw) } != 0 {
+            return Err(io::Error::last_os_error());
         }
+        self.raw = true;
+        Ok(())
+    }
+
+    /// Read the bytes a key press brought, waiting at most `timeout`.
+    ///
+    /// Zero bytes means the wait ran out, which is how the loop notices
+    /// that the document may have changed.
+    pub fn read(&mut self, buffer: &mut [u8], timeout: Duration) -> io::Result<usize> {
+        let mut fds = libc::pollfd {
+            fd: self.fd,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        let millis = timeout.as_millis().min(c_int::MAX as u128) as c_int;
+        let ready = unsafe { libc::poll(&mut fds, 1, millis) };
+        if ready == 0 {
+            return Ok(0);
+        }
+        if ready < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        let count = unsafe {
+            libc::read(
+                self.fd,
+                buffer.as_mut_ptr().cast::<libc::c_void>(),
+                buffer.len(),
+            )
+        };
+        if count < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(count as usize)
+    }
+
+    /// The size of the window, in character cells.
+    pub fn size(&self) -> io::Result<(u32, u32)> {
+        let mut window = unsafe { std::mem::zeroed::<libc::winsize>() };
+        if unsafe { libc::ioctl(self.fd, libc::TIOCGWINSZ, &mut window) } != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok((window.ws_col as u32, window.ws_row as u32))
+    }
+
+    /// Put the terminal back the way it was found.
+    pub fn restore(&mut self) -> io::Result<()> {
+        if !self.raw {
+            return Ok(());
+        }
+        self.raw = false;
+        if unsafe { libc::tcsetattr(self.fd, libc::TCSANOW, &self.original) } != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(())
     }
 }
 
-impl From<Vec<ParseError>> for PaintError {
-    fn from(errors: Vec<ParseError>) -> Self {
-        Self::Document(errors)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::geom::Point;
-
-    #[test]
-    fn one_cell_shows_two_pixels() {
-        let mut frame = Frame::new(1, 2).expect("a small frame");
-        frame.set(Point::new(0, 1), Rgba::WHITE);
-
-        let bytes = encode(&frame);
-
-        assert_eq!(bytes, "\x1b[38;2;0;0;0m\x1b[48;2;255;255;255m▀\x1b[0m\n");
-    }
-
-    #[test]
-    fn a_run_of_one_colour_emits_one_escape() {
-        let frame = Frame::new(2, 2).expect("a small frame");
-
-        let bytes = encode(&frame);
-
-        assert_eq!(bytes, "\x1b[38;2;0;0;0m\x1b[48;2;0;0;0m▀▀\x1b[0m\n");
-    }
-
-    #[test]
-    fn an_odd_last_row_repeats_itself() {
-        let frame = Frame::new(1, 1).expect("a small frame");
-
-        let bytes = encode(&frame);
-
-        assert_eq!(bytes, "\x1b[38;2;0;0;0m\x1b[48;2;0;0;0m▀\x1b[0m\n");
-    }
-
-    #[test]
-    fn a_document_paints_into_terminal_blocks() {
-        let bytes = paint("clear #ff0000", 2, 2).expect("a valid document");
-
-        assert_eq!(bytes, "\x1b[38;2;255;0;0m\x1b[48;2;255;0;0m▀▀\x1b[0m\n");
-    }
-
-    #[test]
-    fn a_broken_document_names_its_line() {
-        let error = paint("clear #000000\nsparkle", 4, 4).expect_err("a bad document");
-
-        assert_eq!(error.to_string(), "line 2: unknown directive `sparkle`\n");
+impl Drop for Terminal {
+    /// Put the terminal back, however the program ends.
+    ///
+    /// A panic unwinds through here, and a terminal left in raw mode is a
+    /// broken session for the person who ran it.
+    fn drop(&mut self) {
+        let _ = self.restore();
     }
 }

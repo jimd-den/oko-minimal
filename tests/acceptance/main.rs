@@ -4,7 +4,7 @@
 //! bytes a terminal receives come out; an event goes in and the console gets an
 //! answer. They do not know how the pixels are made.
 
-use oko::adapters::terminal::{PaintError, paint};
+use oko::adapters::presenter::{PaintError, paint};
 use oko::core::event::{Event, Key, KeyCode, Modifiers};
 use oko::core::focus::SurfaceId;
 use oko::core::lease::OwnerId;
@@ -60,14 +60,14 @@ fn an_svg_export_becomes_a_panel_document() {
             color: oko::core::geom::Rgba::rgb(5, 7, 10),
         }
     );
-    assert!(oko::adapters::terminal::paint(&document, 80, 48).is_ok());
+    assert!(oko::adapters::presenter::paint(&document, 80, 48).is_ok());
 }
 
 /// A panel with a hole is still a panel: the shapes the console can draw are
 /// in the document, and the one it cannot is named with the line it was on.
 #[test]
 fn a_panel_with_a_hole_still_loads_and_reports_the_hole() {
-    let svg = "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 A 5 5 0 0 1 8 8\" fill=\"#000000\"/>\n<rect x=\"1\" y=\"1\" width=\"2\" height=\"2\" fill=\"#ff9d00\"/>\n</svg>";
+    let svg = "<svg viewBox=\"0 0 8 8\">\n<circle cx=\"4\" cy=\"4\" r=\"2\"/>\n<rect x=\"1\" y=\"1\" width=\"2\" height=\"2\" fill=\"#ff9d00\"/>\n</svg>";
 
     let translation = oko::adapters::svg::translate(svg).expect("a panel with a hole");
 
@@ -78,7 +78,30 @@ fn a_panel_with_a_hole_still_loads_and_reports_the_hole() {
     );
     assert_eq!(translation.skipped.len(), 1);
     assert_eq!(translation.skipped[0].line, 2);
-    assert!(translation.skipped[0].reason.contains("`A`"));
+    assert!(translation.skipped[0].reason.contains("circle"));
+}
+
+#[test]
+fn an_arc_is_drawn_as_a_path_directive() {
+    let svg =
+        "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 A 4 4 0 0 1 4 4\" fill=\"#000000\"/>\n</svg>";
+
+    let translation = oko::adapters::svg::translate(svg).expect("a panel with an arc");
+
+    assert!(
+        translation.skipped.is_empty(),
+        "an arc is drawn, not refused"
+    );
+
+    let scene = oko::core::document::parse(&translation.document).expect("a document");
+    let oko::core::scene::Op::Path { path, .. } = &scene.ops()[0] else {
+        panic!("the arc is a path operation");
+    };
+    assert_eq!(path.segments.len(), 2, "a move and one cubic");
+    assert!(matches!(
+        path.segments[1],
+        oko::core::path::Segment::Cubic { .. }
+    ));
 }
 
 #[test]
@@ -132,8 +155,7 @@ fn an_svg_label_becomes_a_text_operation() {
 /// could not draw to standard error, so a pipe keeps only the panel.
 #[test]
 fn the_command_writes_the_panel_out_and_the_report_away() {
-    let svg =
-        "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 A 5 5 0 0 1 8 8\" fill=\"#000000\"/>\n</svg>";
+    let svg = "<svg viewBox=\"0 0 8 8\">\n<circle cx=\"4\" cy=\"4\" r=\"2\"/>\n</svg>";
     let path = std::env::temp_dir().join("oko-svg-hole.svg");
     std::fs::write(&path, svg).expect("the export is written");
 
@@ -145,7 +167,10 @@ fn the_command_writes_the_panel_out_and_the_report_away() {
     assert!(output.status.success());
     assert_eq!(String::from_utf8_lossy(&output.stdout), "");
     let report = String::from_utf8_lossy(&output.stderr);
-    assert!(report.contains("`A`"), "the report names the arc: {report}");
+    assert!(
+        report.contains("circle"),
+        "the report names the shape: {report}"
+    );
     assert!(
         report.contains(":2:"),
         "the report names the line: {report}"

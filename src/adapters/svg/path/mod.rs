@@ -11,6 +11,10 @@
 //! no subpixel geometry. That is a property of the format, like the 5x7
 //! font, and it is not reported per shape.
 
+mod arc;
+#[cfg(test)]
+mod arc_tests;
+mod centre;
 mod curve;
 #[cfg(test)]
 mod curve_tests;

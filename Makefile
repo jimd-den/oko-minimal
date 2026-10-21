@@ -5,9 +5,12 @@
 # is worse than no gate.
 
 CARGO ?= cargo
-CARGO_FLAGS ?= --offline --jobs 1
+# The crate has dependencies now (ADR 0007's libc), and `--offline` means a
+# fresh clone cannot build at all: the gate has to be able to fetch what it
+# needs. The flags are still overridable: `CARGO_FLAGS="--jobs 1" make check`.
+CARGO_FLAGS ?= --jobs 1
 
-.PHONY: check budget fmt typecheck lint test run svg
+.PHONY: check budget fmt typecheck lint test run watch svg
 
 check: budget fmt typecheck lint test
 
@@ -27,7 +30,14 @@ test:
 	$(CARGO) test $(CARGO_FLAGS) -- --test-threads=1
 
 # One source of truth for the example: the SVG is translated, then painted.
+# `run` paints one frame and stops, because a script wants a frame and not a
+# program that never returns. `watch` is the console: it presents the panel
+# and reloads it when the file changes.
 run:
+	$(CARGO) run $(CARGO_FLAGS) --bin oko-svg -- examples/panel.svg > target/panel.oko
+	$(CARGO) run $(CARGO_FLAGS) --bin oko -- --once target/panel.oko
+
+watch:
 	$(CARGO) run $(CARGO_FLAGS) --bin oko-svg -- examples/panel.svg > target/panel.oko
 	$(CARGO) run $(CARGO_FLAGS) --bin oko -- target/panel.oko
 

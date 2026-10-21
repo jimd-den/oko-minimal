@@ -9,6 +9,7 @@
 //! does not draw is not an error: it is named in the report, and the shapes
 //! around it still draw.
 
+use super::arc;
 use super::curve;
 use super::reader::Reader;
 use super::state::{Previous, State};
@@ -17,7 +18,7 @@ use crate::adapters::svg::error::SvgError;
 use crate::core::path::{Path, Segment};
 
 /// The commands this grammar speaks. Every other letter is named and refused.
-const COMMANDS: &[u8] = b"MmLlHhVvCcSsQqTtZz";
+const COMMANDS: &[u8] = b"MmLlHhVvCcSsQqTtAaZz";
 
 /// Read a `d` attribute into the segments the core draws.
 pub(super) fn read(source: &str, line: usize) -> Result<Parsed, SvgError> {
@@ -86,6 +87,12 @@ impl Grammar<'_> {
             b'S' | b's' => self.curve(curve::smooth_cubic, relative),
             b'Q' | b'q' => self.curve(curve::quadratic, relative),
             b'T' | b't' => self.curve(curve::smooth_quadratic, relative),
+            b'A' | b'a' => {
+                for segment in arc::command(&mut self.reader, &mut self.state, relative)? {
+                    self.push(segment)?;
+                }
+                Ok(())
+            }
             b'Z' | b'z' => self.close(),
             _ => unreachable!("the command was checked above"),
         }
@@ -140,8 +147,8 @@ impl Grammar<'_> {
             }
             _ => unreachable!("only L, H and V come here"),
         }
-        let to = self.state.at(self.state.current)?;
-        self.push(Segment::Line { to })?;
+        let segment = self.state.line(self.state.current)?;
+        self.push(segment)?;
         self.state.previous = Previous::Other;
         Ok(())
     }
