@@ -1,0 +1,7 @@
+# The first screen, in the hand-edited document the console reads.
+clear #05070a
+rect 2 2 76 44 #0b1220
+text 6 6 "OKO" 3 #ff9d00
+text 6 29 "SYSTEM READY" 1 #c9d1d9
+line 6 38 74 38 #1f6feb
+text 6 40 "LOGIN:" 1 #8b949e
