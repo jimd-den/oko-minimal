@@ -33,8 +33,10 @@ a stroke colour, or both, and either may be absent.
 - The scene gains one operation for a path, with the path and its two paints.
 - The document grammar gains one directive for a path, in the same small
   language the SVG path reader already speaks:
-  `path M 10 10 C 20 0 30 10 Z fill #ff9d00`, with `M`, `L`, `C`, `Q` and `Z`
-  as the commands, and `fill` and `stroke` naming the paints at the end.
+  `path M 10 10 C 20 0 30 0 30 10 Z fill #ff9d00`, with `M`, `L`, `C`, `Q` and `Z`
+  as the commands in absolute coordinates, and `fill` and `stroke` naming
+  the paints at the end. Absolute only: a document is read by a person, and
+  a person should not have to do arithmetic to find out where a curve goes.
   A path must state at least one paint. A path that states neither is
   refused, because the document has no current colour to inherit, and a
   shape nobody can see is a shape nobody can fix.

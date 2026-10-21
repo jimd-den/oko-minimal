@@ -100,6 +100,38 @@ impl Rgba {
     }
 }
 
+/// A point in fractions of a pixel.
+///
+/// The integer point is a pixel; this one keeps the fractions, so a curve is
+/// rounded to the grid only when it is painted and a small shape is not
+/// snapped out of existence.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Sample {
+    pub x: f64,
+    pub y: f64,
+}
+
+/// A point on a Bézier curve, a fraction `t` of the way along it.
+///
+/// The control polygon is given from the start of the curve to its end, so a
+/// straight edge is two points, a quadratic three and a cubic four. The
+/// weights are Bernstein's: each control point's weight is its binomial
+/// coefficient times the powers of `t` and of `1 - t`.
+pub fn evaluate(controls: &[Sample], t: f64) -> Sample {
+    let u = 1.0 - t;
+    let weights: Vec<f64> = match controls.len() {
+        2 => vec![u, t],
+        3 => vec![u * u, 2.0 * u * t, t * t],
+        _ => vec![u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t],
+    };
+    let mut point = Sample { x: 0.0, y: 0.0 };
+    for (weight, control) in weights.iter().zip(controls) {
+        point.x += weight * control.x;
+        point.y += weight * control.y;
+    }
+    point
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,5 +157,30 @@ mod tests {
         let empty = Rect::new(3, 3, 0, 10);
 
         assert_eq!(empty.intersect(Rect::new(0, 0, 10, 10)), None);
+    }
+
+    #[test]
+    fn a_curve_starts_and_ends_where_it_was_told() {
+        let controls = [
+            Sample { x: 0.0, y: 0.0 },
+            Sample { x: 0.0, y: 10.0 },
+            Sample { x: 10.0, y: 10.0 },
+            Sample { x: 10.0, y: 0.0 },
+        ];
+
+        assert_eq!(evaluate(&controls, 0.0), controls[0]);
+        assert_eq!(evaluate(&controls, 1.0), controls[3]);
+    }
+
+    #[test]
+    fn a_curve_leaves_its_chord() {
+        let controls = [
+            Sample { x: 0.0, y: 0.0 },
+            Sample { x: 0.0, y: 10.0 },
+            Sample { x: 10.0, y: 10.0 },
+            Sample { x: 10.0, y: 0.0 },
+        ];
+
+        assert!(evaluate(&controls, 0.5).y > 1.0);
     }
 }

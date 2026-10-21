@@ -7,6 +7,7 @@
 //! them can see anything the scene does not state.
 
 use super::geom::{Point, Rect, Rgba};
+use super::path::Path;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Op {
@@ -26,6 +27,14 @@ pub enum Op {
         text: String,
         scale: u8,
         color: Rgba,
+    },
+    /// A path, with the paints it carries. Either paint may be absent: a path
+    /// that is only filled is not outlined, and one that is only stroked is
+    /// not filled.
+    Path {
+        path: Path,
+        fill: Option<Rgba>,
+        stroke: Option<Rgba>,
     },
 }
 

@@ -2,9 +2,12 @@
 //! bottom, with no padding.
 //!
 //! Every write is clipped, so a scene may paint outside the frame and the
-//! result is the same as if it had not. Nothing here can panic on a bad
-//! coordinate; the only refusal is a size too large to allocate.
+//! result is the same as if it had not. A frame can fill a rectangle and
+//! draw a line into itself; the shapes of a path are painted by `core::paint`.
+//! Nothing here can panic on a bad coordinate; the only refusal is a size
+//! too large to allocate.
 
+use super::clip::clip_line;
 use super::geom::{Point, Rect, Rgba};
 
 /// 16 Mi pixels: a 4096 x 4096 frame at four bytes each. Larger than any
@@ -62,6 +65,45 @@ impl Frame {
         }
     }
 
+    /// Paint a straight line, clipped to the frame.
+    ///
+    /// Bresenham: one pixel per step, no gaps, no floating point. The line
+    /// is cut to the frame before it is walked, so a line from `i32::MIN` to
+    /// `i32::MAX` does not take four billion steps to reach the edge.
+    pub fn line(&mut self, from: Point, to: Point, color: Rgba) {
+        let Some((start, end)) = clip_line(from, to, self.width, self.height) else {
+            return;
+        };
+        self.steps(start, end, color);
+    }
+
+    /// Walk a clipped line, one pixel per step.
+    fn steps(&mut self, from: Point, to: Point, color: Rgba) {
+        let (mut x, mut y) = (i64::from(from.x), i64::from(from.y));
+        let (end_x, end_y) = (i64::from(to.x), i64::from(to.y));
+        let dx = (end_x - x).abs();
+        let dy = -(end_y - y).abs();
+        let step_x = if x < end_x { 1 } else { -1 };
+        let step_y = if y < end_y { 1 } else { -1 };
+        let mut error = dx + dy;
+
+        loop {
+            self.set(Point::new(x as i32, y as i32), color);
+            if x == end_x && y == end_y {
+                break;
+            }
+            let twice = 2 * error;
+            if twice >= dy {
+                error += dy;
+                x += step_x;
+            }
+            if twice <= dx {
+                error += dx;
+                y += step_y;
+            }
+        }
+    }
+
     /// Paint `area`, clipped to the frame.
     pub fn fill(&mut self, area: Rect, color: Rgba) {
         let Some(clipped) = area.intersect(self.bounds()) else {
@@ -112,6 +154,17 @@ mod tests {
         frame.set(Point::new(2, 2), Rgba::WHITE);
 
         assert_eq!(frame.color_at(Point::new(0, 0)), Some(Rgba::BLACK));
+    }
+
+    #[test]
+    fn a_line_reaches_both_ends_and_stays_inside() {
+        let mut frame = Frame::new(4, 4).expect("a small frame");
+
+        frame.line(Point::new(-10, 1), Point::new(10, 1), Rgba::WHITE);
+
+        assert_eq!(frame.color_at(Point::new(0, 1)), Some(Rgba::WHITE));
+        assert_eq!(frame.color_at(Point::new(3, 1)), Some(Rgba::WHITE));
+        assert_eq!(frame.color_at(Point::new(1, 2)), Some(Rgba::BLACK));
     }
 
     #[test]

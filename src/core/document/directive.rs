@@ -8,6 +8,7 @@ use super::super::font;
 use super::super::geom::Point;
 use super::super::scene::Op;
 use super::super::syntax;
+use super::path;
 
 pub(crate) fn parse(source: &str) -> Result<Op, String> {
     let mut words = source.split_whitespace();
@@ -15,6 +16,10 @@ pub(crate) fn parse(source: &str) -> Result<Op, String> {
 
     if name == "text" {
         return text(source);
+    }
+
+    if name == "path" {
+        return path::parse(source);
     }
 
     let op = match name {

@@ -13,6 +13,7 @@
 
 mod directive;
 mod error;
+mod path;
 
 pub use error::ParseError;
 
@@ -57,6 +58,7 @@ pub fn parse(text: &str) -> Result<Scene, Vec<ParseError>> {
 mod tests {
     use super::*;
     use crate::core::geom::{Point, Rect, Rgba};
+    use crate::core::raster;
     use crate::core::scene::Op;
 
     #[test]
@@ -100,6 +102,20 @@ line 0 0 9 4 #1f6feb";
         assert_eq!(errors.len(), 2);
         assert_eq!(errors[0].line, 1);
         assert_eq!(errors[1].line, 2);
+    }
+
+    #[test]
+    fn a_path_in_a_document_reaches_the_frame() {
+        let text = "path M 2 2 L 10 2 L 2 10 Z fill #ff9d00";
+
+        let scene = parse(text).expect("a valid document");
+        let frame = raster::render(&scene, 12, 12).expect("a small frame");
+
+        assert_eq!(
+            frame.color_at(Point::new(3, 3)),
+            Some(Rgba::rgb(255, 157, 0))
+        );
+        assert_eq!(frame.color_at(Point::new(9, 9)), Some(Rgba::BLACK));
     }
 
     #[test]

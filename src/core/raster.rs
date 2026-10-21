@@ -4,9 +4,8 @@
 //! the frame, paints each operation in order, and returns. No clock, no I/O, no
 //! global state — so a test can render a scene in one line and look at a pixel.
 
-use super::clip::clip_line;
 use super::frame::Frame;
-use super::geom::{Point, Rgba};
+use super::paint::path as paint_path;
 use super::scene::{Op, Scene};
 use super::text;
 
@@ -25,44 +24,14 @@ fn paint(frame: &mut Frame, op: &Op) {
             frame.fill(everything, *color);
         }
         Op::Rect { area, color } => frame.fill(*area, *color),
-        Op::Line { from, to, color } => {
-            if let Some((start, end)) = clip_line(*from, *to, frame.width(), frame.height()) {
-                paint_line(frame, start, end, *color);
-            }
-        }
+        Op::Line { from, to, color } => frame.line(*from, *to, *color),
         Op::Text {
             at,
             text: label,
             scale,
             color,
         } => text::paint(frame, *at, label, *scale, *color),
-    }
-}
-
-/// Bresenham: one pixel per step, no floating point, no gaps.
-fn paint_line(frame: &mut Frame, from: Point, to: Point, color: Rgba) {
-    let (mut x, mut y) = (i64::from(from.x), i64::from(from.y));
-    let (end_x, end_y) = (i64::from(to.x), i64::from(to.y));
-    let dx = (end_x - x).abs();
-    let dy = -(end_y - y).abs();
-    let step_x = if x < end_x { 1 } else { -1 };
-    let step_y = if y < end_y { 1 } else { -1 };
-    let mut error = dx + dy;
-
-    loop {
-        frame.set(Point::new(x as i32, y as i32), color);
-        if x == end_x && y == end_y {
-            break;
-        }
-        let twice = 2 * error;
-        if twice >= dy {
-            error += dy;
-            x += step_x;
-        }
-        if twice <= dx {
-            error += dx;
-            y += step_y;
-        }
+        Op::Path { path, fill, stroke } => paint_path(frame, path, *fill, *stroke),
     }
 }
 
@@ -70,6 +39,7 @@ fn paint_line(frame: &mut Frame, from: Point, to: Point, color: Rgba) {
 mod tests {
     use super::*;
     use crate::core::geom::{Point, Rect, Rgba};
+    use crate::core::path::{Path, Segment};
 
     #[test]
     fn a_rectangle_paints_its_area() {
@@ -147,6 +117,62 @@ mod tests {
         let frame = render(&scene, 5, 7).expect("a small frame");
 
         assert_eq!(frame.color_at(Point::new(2, 3)), Some(Rgba::WHITE));
+    }
+
+    #[test]
+    fn a_path_paints_its_interior() {
+        let mut scene = Scene::new();
+        scene.push(Op::Path {
+            path: Path {
+                segments: vec![
+                    Segment::Move {
+                        to: Point::new(1, 1),
+                    },
+                    Segment::Line {
+                        to: Point::new(9, 1),
+                    },
+                    Segment::Line {
+                        to: Point::new(1, 9),
+                    },
+                    Segment::Close,
+                ],
+            },
+            fill: Some(Rgba::WHITE),
+            stroke: None,
+        });
+
+        let frame = render(&scene, 12, 12).expect("a small frame");
+
+        assert_eq!(frame.color_at(Point::new(2, 2)), Some(Rgba::WHITE));
+        assert_eq!(frame.color_at(Point::new(9, 9)), Some(Rgba::BLACK));
+    }
+
+    #[test]
+    fn a_stroked_path_paints_its_edge_and_not_its_inside() {
+        let mut scene = Scene::new();
+        scene.push(Op::Path {
+            path: Path {
+                segments: vec![
+                    Segment::Move {
+                        to: Point::new(1, 1),
+                    },
+                    Segment::Line {
+                        to: Point::new(9, 1),
+                    },
+                    Segment::Line {
+                        to: Point::new(1, 9),
+                    },
+                    Segment::Close,
+                ],
+            },
+            fill: None,
+            stroke: Some(Rgba::WHITE),
+        });
+
+        let frame = render(&scene, 12, 12).expect("a small frame");
+
+        assert_eq!(frame.color_at(Point::new(5, 1)), Some(Rgba::WHITE));
+        assert_eq!(frame.color_at(Point::new(2, 2)), Some(Rgba::BLACK));
     }
 
     #[test]
