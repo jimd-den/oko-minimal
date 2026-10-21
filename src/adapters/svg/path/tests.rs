@@ -60,12 +60,12 @@ fn relative_commands_accumulate() {
 }
 
 #[test]
-fn a_curve_is_reported_by_name() {
-    let path = outline("M0 0 C 1 1 2 2 3 3", 4).expect("a curve");
+fn an_arc_is_reported_by_name() {
+    let path = outline("M0 0 A 5 5 0 0 1 10 10", 4).expect("an arc");
 
     assert_eq!(
         path,
-        Path::Undrawn("the path uses `C`, which this console does not draw".to_string())
+        Path::Undrawn("the path uses `A`, which this console does not draw".to_string())
     );
 }
 

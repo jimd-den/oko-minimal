@@ -67,7 +67,7 @@ fn an_svg_export_becomes_a_panel_document() {
 /// in the document, and the one it cannot is named with the line it was on.
 #[test]
 fn a_panel_with_a_hole_still_loads_and_reports_the_hole() {
-    let svg = "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 C 1 1 2 2 3 3\" fill=\"#000000\"/>\n<rect x=\"1\" y=\"1\" width=\"2\" height=\"2\" fill=\"#ff9d00\"/>\n</svg>";
+    let svg = "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 A 5 5 0 0 1 8 8\" fill=\"#000000\"/>\n<rect x=\"1\" y=\"1\" width=\"2\" height=\"2\" fill=\"#ff9d00\"/>\n</svg>";
 
     let translation = oko::adapters::svg::translate(svg).expect("a panel with a hole");
 
@@ -78,7 +78,7 @@ fn a_panel_with_a_hole_still_loads_and_reports_the_hole() {
     );
     assert_eq!(translation.skipped.len(), 1);
     assert_eq!(translation.skipped[0].line, 2);
-    assert!(translation.skipped[0].reason.contains("`C`"));
+    assert!(translation.skipped[0].reason.contains("`A`"));
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn an_svg_label_becomes_a_text_operation() {
 #[test]
 fn the_command_writes_the_panel_out_and_the_report_away() {
     let svg =
-        "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 C 1 1 2 2 3 3\" fill=\"#000000\"/>\n</svg>";
+        "<svg viewBox=\"0 0 8 8\">\n<path d=\"M0 0 A 5 5 0 0 1 8 8\" fill=\"#000000\"/>\n</svg>";
     let path = std::env::temp_dir().join("oko-svg-hole.svg");
     std::fs::write(&path, svg).expect("the export is written");
 
@@ -146,8 +146,8 @@ fn the_command_writes_the_panel_out_and_the_report_away() {
     assert_eq!(String::from_utf8_lossy(&output.stdout), "");
     let report = String::from_utf8_lossy(&output.stderr);
     assert!(
-        report.contains("`C`"),
-        "the report names the curve: {report}"
+        report.contains("`A`"),
+        "the report names the arc: {report}"
     );
     assert!(
         report.contains(":2:"),
