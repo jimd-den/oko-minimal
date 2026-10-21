@@ -126,3 +126,18 @@ fn polylines(count: usize) -> String {
     svg.push_str("</svg>");
     svg
 }
+
+#[test]
+fn a_translucent_shape_is_reported_and_the_panel_still_loads() {
+    let svg = r##"<svg viewBox="0 0 10 10"><rect x="0" y="0" width="4" height="4" fill="#ff0000" opacity="0.5"/></svg>"##;
+
+    let translation = translate(svg).expect("a translated export");
+
+    assert_eq!(translation.document, "");
+    assert_eq!(translation.skipped.len(), 1);
+    assert!(
+        translation.skipped[0].reason.contains("translucent"),
+        "the reason was {}",
+        translation.skipped[0].reason
+    );
+}

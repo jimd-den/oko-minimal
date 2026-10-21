@@ -72,3 +72,46 @@ fn a_stroked_outline_without_a_fill_is_an_outline() {
 
     assert_eq!(Inherited::default().outline_fill_of(&shape), Paint::Nothing);
 }
+
+#[test]
+fn an_opacity_below_one_makes_the_fill_translucent() {
+    let element = element(&[("fill", "#ff0000"), ("opacity", "0.5")]);
+
+    let paint = Inherited::default().fill_of(&element);
+
+    let reason = match &paint {
+        Paint::Unsupported(reason) => reason.clone(),
+        other => panic!("the paint was {other:?}"),
+    };
+    assert!(reason.contains("translucent"), "the reason was {reason}");
+}
+
+#[test]
+fn an_opacity_of_one_is_drawn() {
+    let element = element(&[("fill", "#ff0000"), ("opacity", "1")]);
+
+    assert_eq!(
+        Inherited::default().fill_of(&element),
+        Paint::Colour(Rgba::rgb(255, 0, 0))
+    );
+}
+
+#[test]
+fn a_fill_opacity_below_one_makes_the_fill_translucent() {
+    let element = element(&[("fill", "#ff0000"), ("fill-opacity", "0.5")]);
+
+    assert!(matches!(
+        Inherited::default().fill_of(&element),
+        Paint::Unsupported(_)
+    ));
+}
+
+#[test]
+fn a_group_fades_the_shapes_inside_it() {
+    let group = element(&[("opacity", "0.5")]);
+    let shape = element(&[("fill", "#ff0000")]);
+
+    let inherited = Inherited::default().inherit(&group);
+
+    assert!(matches!(inherited.fill_of(&shape), Paint::Unsupported(_)));
+}
