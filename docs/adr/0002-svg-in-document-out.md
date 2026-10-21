@@ -1,6 +1,7 @@
 # 0002 — SVG in, panel document out
 
-Status: accepted · Date: 2026-10-21
+Status: accepted · Date: 2026-10-21 · Text amended by
+`docs/adr/0003-svg-text-mapping.md`
 
 ## Context
 
@@ -19,16 +20,19 @@ writes something the console must interpret at runtime.
 
 - Input: the subset of SVG that a panel export uses — `svg`, `g`, `rect`,
   `line`, `polyline`, straight-line `path` (`M`, `L`, `H`, `V`, `Z`), `translate`
-  transforms, `viewBox` origin, hex and `rgb()` colours, full opacity.
+  transforms, `viewBox` origin, hex and `rgb()` colours, full opacity, and
+  `text` with its `tspan` lines, which ADR 0003 added later.
 - Output: the existing panel document, one directive per line.
 - The document remains the source of truth. It is human-readable, diffable, hot
   reloadable, and independent of the editor that produced it.
 - The translator is total and bounded: 1 MiB input, 4096 elements, 64 attributes
   per element, 4096 path points, and the document format's own coordinate and
   size limits. Every refusal names a line.
-- Curves, text, rotation, scale, opacity below one, inheritance on groups and
-  unknown elements are refused, not approximated. A silent approximation is a
-  picture nobody can trace back to the source.
+- Curves, rotation, scale, opacity below one, inheritance on groups and unknown
+  elements are refused, not approximated. Text was refused on the same grounds
+  until the built-in font made a mapping possible; ADR 0003 records what
+  replaced that refusal. A silent approximation is a picture nobody can trace
+  back to the source.
 
 `oko-svg panel.svg > panel.oko` is the whole bridge. The translator is a library
 function (`adapters::svg::translate`) first and a binary second, so it is tested
@@ -48,20 +52,23 @@ without a filesystem.
 
 ## Consequences
 
-- A v1 design cannot use curves, text, rotation or transparency. Text is the
-  first limitation to remove, when the bitmap font exists; curves and transforms
-  need new display-list primitives.
+- A v1 design cannot use curves, rotation or transparency. Text was the first
+  limitation to remove, and it has been: the bitmap font exists and the
+  translator maps SVG text onto the document's text directive. Curves and
+  transforms still need new display-list primitives.
 - Scaling from a design-time viewBox to a runtime frame is not performed. The
   panel is authored in pixels at the target size; this is a deliberate limit.
 - The translator must track the document grammar's limits. It imports the same
-  constants, so the two cannot drift.
+  constants, so the two cannot drift, and it counts the operations it writes,
+  because one element can become many directives.
 - The editor's output is not trusted. The XML scanner refuses doctypes and
   entities, and the translator refuses anything outside its whitelist.
 
 ## Revisit if
 
-- text and curves become necessary for the first real panel, which forces the
-  font and a path fill rule;
+- curves become necessary for the first real panel, which forces a path fill
+  rule — the text half of this trigger has already fired, and ADR 0003 is the
+  decision that answered it;
 - exports begin to use `<use>`, `<defs>` or stylesheets, which forces a symbol
   table and a second pass;
 - an embedded editor appears, which should write the document and delete the

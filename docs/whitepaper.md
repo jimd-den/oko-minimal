@@ -8,8 +8,8 @@ session bus, a graph of processes, and a reason to exist before anyone has
 logged in.
 
 ỌKỌ removes the broker and keeps the contract. The contract is a **display
-list**: an ordered set of rectangles and lines, rendered into a frame by a pure
-function. A program that wants to paint produces a list. The console owns the
+list**: an ordered set of rectangles, lines and text, rendered into a frame by a
+pure function. A program that wants to paint produces a list. The console owns the
 device and decides who may present. Between the list and the device there is no
 protocol to negotiate, no surface to allocate, no compositor to schedule. There
 is a frame, a lease, and a focused surface.
@@ -28,7 +28,7 @@ outside world: it reads bytes, writes escape sequences, and translates an SVG
 export. `main` names a file and a terminal; nothing else does.
 
 The line between them is the display list. A `Scene` is a short sequence of
-`Clear`, `Rect` and `Line`. A `Frame` is an opaque grid of pixels. `render` is
+`Clear`, `Rect`, `Line` and `Text`. A `Frame` is an opaque grid of pixels. `render` is
 the only function that turns one into the other. A `document` is the text a
 person edits; it parses into a `Scene`, and a bad document changes nothing.
 
@@ -41,7 +41,7 @@ serialise and discard. It is also the unit of hot editing: parse the file, get a
 list, swap it, redraw. Nothing else in the system needs to know that the file
 changed.
 
-The list will grow: text, images, clipped groups, transforms. Each addition
+The list will grow: images, clipped groups, transforms. Each addition
 needs a primitive, a renderer case, and a test. The order is deliberate. A
 primitive that no test demanded is a guess, and guesses become compatibility
 burdens.
@@ -64,20 +64,27 @@ will use when they become processes.
 ## Authoring
 
 Draw in Penpot or Figma, export SVG, translate. The translator is a whitelist:
-rectangles, lines, polylines, straight paths, translations, flat colours. It
-refuses curves, text, rotation and opacity by name and line. It writes the same
-document a person would type, and that document is the source of truth. A
-visual editor can come later and write the same text; it is not a prerequisite.
+rectangles, lines, polylines, straight paths, translations, flat colours, and
+text with its spans. It refuses curves, rotation, scale and opacity below one
+by name and line. A label is drawn by the built-in font, so its size is the
+authored size rounded to a whole number of glyph heights, capped at eight, and
+it is drawn in uppercase. It writes the same document a person would type, and that document
+is the source of truth. A visual editor can come later and write the same text;
+it is not a prerequisite.
 
 The bounding is the point. An SVG file is an untrusted program in most systems;
 here it is a bounded input to a total function. One mebibyte, four thousand
 elements, four thousand points, and the document's own coordinate limits. The
-translator cannot emit a document its parser would reject.
+translator writes the format's own limits into its output — coordinates, sizes,
+labels, scales, and the count of operations — so what it writes is what the
+parser accepts. One element can become many directives, so the writer counts
+them and refuses the panel that would need more than the format allows.
 
 ## The line is the design
 
-No source file exceeds two hundred lines, no function is much longer than a
-dozen. This is not tidiness. A file that fits in one read is a file that can be
+No source file exceeds two hundred lines, and most functions are a dozen lines
+or fewer; the longest is the path grammar's reader, which reads a small language
+in one place. This is not tidiness. A file that fits in one read is a file that can be
 held in a REPL variable, read whole by a reviewer, and delegated without a
 summary. The size limit is what makes purity practical: small pure functions are
 callable in one line, so they are explored instead of guessed at.
@@ -89,18 +96,19 @@ The lint is green or it is not; the budget is a script, not a matter of taste.
 ## What exists today
 
 - `core`: geometry, frames, scenes, Cohen–Sutherland clipping, Bresenham lines,
-  the document parser, the lease, focus, and the session reducer.
+  the five-by-seven bitmap font and the text it draws, the document parser, the
+  lease, focus, and the session reducer.
 - `adapters`: a terminal encoder (two square pixels per cell, 24-bit colour), a
-  painter, and the bounded SVG translator.
+  painter, and the bounded SVG translator, which reads labels as well as shapes.
 - `oko panel.oko [columns rows]` paints one frame. `oko-svg panel.svg` writes the
   document. Examples for both.
-- 76 tests. The gate is `make check`: line budget, format, types, clippy, tests.
+- 114 tests. The gate is `make check`: line budget, format, types, clippy, tests.
 
 ## What is deliberately absent
 
-Text and a bundled font. Pointer input. Images, arcs, paths with curves,
-transforms and opacity. The surface wire format between processes. The boot
-console, getty handoff and the framebuffer presenters. A visual editor.
+Pointer input. Images, arcs, paths with curves, transforms and opacity. The
+surface wire format between processes. The boot console, getty handoff and the
+framebuffer presenters. A visual editor.
 
 Each is a decision with an ADR, not a forgotten feature. The invariant they
 serve is the one from SRD-002: the machine must always reach a usable first
