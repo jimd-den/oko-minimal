@@ -5,13 +5,14 @@
 //! in `translator` decides which shape is next, and this module decides what a
 //! rectangle, a line, a polyline or a path paints.
 
+use super::emit::Writer;
 use super::error::SvgError;
 use super::xml::Element;
 use super::{emit, paint, path, rectangle, values};
 use crate::core::geom::{Point, Rect};
 use crate::core::syntax::MAX_SIDE;
 
-pub fn rect(document: &mut String, element: &Element, at: (i32, i32)) -> Result<(), SvgError> {
+pub fn rect(document: &mut Writer, element: &Element, at: (i32, i32)) -> Result<(), SvgError> {
     let width = size(element, "width")?;
     let height = size(element, "height")?;
     let Some(colour) = paint::fill(element)? else {
@@ -26,7 +27,7 @@ pub fn rect(document: &mut String, element: &Element, at: (i32, i32)) -> Result<
     emit::rect(document, area, colour, element.line)
 }
 
-pub fn line(document: &mut String, element: &Element, at: (i32, i32)) -> Result<(), SvgError> {
+pub fn line(document: &mut Writer, element: &Element, at: (i32, i32)) -> Result<(), SvgError> {
     let Some(colour) = paint::stroke(element)? else {
         return Ok(());
     };
@@ -41,7 +42,7 @@ pub fn line(document: &mut String, element: &Element, at: (i32, i32)) -> Result<
     emit::line(document, from, to, colour, element.line)
 }
 
-pub fn polyline(document: &mut String, element: &Element, at: (i32, i32)) -> Result<(), SvgError> {
+pub fn polyline(document: &mut Writer, element: &Element, at: (i32, i32)) -> Result<(), SvgError> {
     let Some(word) = element.attribute("points") else {
         return Err(element.error("a polyline needs points"));
     };
@@ -67,7 +68,7 @@ pub fn polyline(document: &mut String, element: &Element, at: (i32, i32)) -> Res
     Ok(())
 }
 
-pub fn path(document: &mut String, element: &Element, at: (i32, i32)) -> Result<(), SvgError> {
+pub fn path(document: &mut Writer, element: &Element, at: (i32, i32)) -> Result<(), SvgError> {
     let Some(word) = element.attribute("d") else {
         return Err(element.error("a path needs a `d` attribute"));
     };

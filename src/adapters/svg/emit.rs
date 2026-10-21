@@ -3,12 +3,49 @@
 //! The translator must not write a document its own parser will reject. The
 //! checks here are the document format's checks, shared through
 //! `core::syntax`, so the two never drift apart.
+//!
+//! The writer also counts the operations it writes, because the format caps
+//! how many a document may hold. The count is of operations, not of bytes or
+//! of elements: a polyline of five points writes four `line` directives and
+//! counts four.
 
 use super::error::SvgError;
+use crate::core::document::MAX_OPS;
 use crate::core::geom::{Point, Rect, Rgba};
 use crate::core::syntax::{MAX_COORDINATE, MAX_SIDE};
 
-pub fn rect(document: &mut String, area: Rect, colour: Rgba, line: usize) -> Result<(), SvgError> {
+/// The document being written, and how many operations it holds.
+///
+/// Contract: every operation written is counted, and the write that would
+/// pass the format's budget is refused with the line of the element that
+/// caused it.
+#[derive(Default)]
+pub struct Writer {
+    text: String,
+    ops: usize,
+}
+
+impl Writer {
+    /// Write one operation, refusing when the budget is spent.
+    pub fn write(&mut self, operation: &str, line: usize) -> Result<(), SvgError> {
+        if self.ops >= MAX_OPS {
+            return Err(SvgError::new(
+                line,
+                format!("a document may hold at most {MAX_OPS} operations"),
+            ));
+        }
+        self.ops += 1;
+        self.text.push_str(operation);
+        Ok(())
+    }
+
+    /// The document text, once every operation has been written.
+    pub fn into_text(self) -> String {
+        self.text
+    }
+}
+
+pub fn rect(document: &mut Writer, area: Rect, colour: Rgba, line: usize) -> Result<(), SvgError> {
     if area.w == 0 || area.h == 0 {
         return Ok(());
     }
@@ -20,19 +57,21 @@ pub fn rect(document: &mut String, area: Rect, colour: Rgba, line: usize) -> Res
             format!("sizes above {MAX_SIDE} are not supported"),
         ));
     }
-    document.push_str(&format!(
-        "rect {} {} {} {} {}\n",
-        area.x,
-        area.y,
-        area.w,
-        area.h,
-        hex(colour)
-    ));
-    Ok(())
+    document.write(
+        &format!(
+            "rect {} {} {} {} {}\n",
+            area.x,
+            area.y,
+            area.w,
+            area.h,
+            hex(colour)
+        ),
+        line,
+    )
 }
 
 pub fn line(
-    document: &mut String,
+    document: &mut Writer,
     from: Point,
     to: Point,
     colour: Rgba,
@@ -42,22 +81,24 @@ pub fn line(
     coordinate(from.y, line)?;
     coordinate(to.x, line)?;
     coordinate(to.y, line)?;
-    document.push_str(&format!(
-        "line {} {} {} {} {}\n",
-        from.x,
-        from.y,
-        to.x,
-        to.y,
-        hex(colour)
-    ));
-    Ok(())
+    document.write(
+        &format!(
+            "line {} {} {} {} {}\n",
+            from.x,
+            from.y,
+            to.x,
+            to.y,
+            hex(colour)
+        ),
+        line,
+    )
 }
 
 fn coordinate(value: i32, line: usize) -> Result<(), SvgError> {
     if i64::from(value).abs() > MAX_COORDINATE {
         return Err(SvgError::new(
             line,
-            format!("coordinates must be within ±{MAX_COORDINATE}"),
+            format!("coordinates must be within \u{b1}{MAX_COORDINATE}"),
         ));
     }
     Ok(())
@@ -73,7 +114,7 @@ mod tests {
 
     #[test]
     fn a_rectangle_becomes_one_document_line() {
-        let mut document = String::new();
+        let mut document = Writer::default();
 
         rect(
             &mut document,
@@ -83,16 +124,31 @@ mod tests {
         )
         .expect("a rectangle");
 
-        assert_eq!(document, "rect 2 3 4 5 #ff9d00\n");
+        assert_eq!(document.into_text(), "rect 2 3 4 5 #ff9d00\n");
     }
 
     #[test]
     fn a_coordinate_the_format_would_reject_is_refused() {
-        let mut document = String::new();
+        let mut document = Writer::default();
 
         let error = rect(&mut document, Rect::new(40_000, 0, 1, 1), Rgba::BLACK, 1)
             .expect_err("a coordinate out of range");
 
         assert!(error.problem.contains("32767"));
+    }
+
+    #[test]
+    fn the_write_that_passes_the_budget_is_refused() {
+        let mut document = Writer::default();
+
+        for _ in 0..MAX_OPS {
+            document.write("clear #000000\n", 1).expect("an operation");
+        }
+        let error = document
+            .write("clear #000000\n", 9)
+            .expect_err("an operation over the budget");
+
+        assert_eq!(error.line, 9);
+        assert!(error.problem.contains(&MAX_OPS.to_string()));
     }
 }

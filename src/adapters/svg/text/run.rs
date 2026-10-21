@@ -5,6 +5,7 @@
 //! becomes the scale of the glyph. What the document grammar cannot hold, a
 //! double quote in a label, is refused rather than escaped.
 
+use super::super::emit::Writer;
 use super::Style;
 use crate::core::font;
 use crate::core::geom::Rgba;
@@ -57,8 +58,11 @@ pub fn label(run: &str, line: usize) -> Result<Option<String>, SvgError> {
 }
 
 /// Write one label as a document directive.
+///
+/// A label is one operation, whatever its length: the document counts
+/// directives, not characters.
 pub fn emit(
-    document: &mut String,
+    document: &mut Writer,
     style: &Style,
     label: &str,
     line: usize,
@@ -82,15 +86,17 @@ pub fn emit(
             ));
         }
     }
-    document.push_str(&format!(
-        "text {} {} \"{}\" {} {}\n",
-        style.x,
-        top,
-        label,
-        scale,
-        hex(colour)
-    ));
-    Ok(())
+    document.write(
+        &format!(
+            "text {} {} \"{}\" {} {}\n",
+            style.x,
+            top,
+            label,
+            scale,
+            hex(colour)
+        ),
+        line,
+    )
 }
 
 fn hex(colour: Rgba) -> String {

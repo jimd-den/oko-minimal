@@ -6,14 +6,14 @@
 //! here reads the clock or the filesystem, so the whole authoring bridge is a
 //! pure function from SVG text to document text.
 
+use super::emit::Writer;
 use super::error::SvgError;
 use super::xml::{Element, Event};
 use super::{paint, shapes, text, values};
-use std::mem;
 
 #[derive(Default)]
 pub struct Translator {
-    document: String,
+    document: Writer,
     stack: Vec<Frame>,
     offset: (i32, i32),
     /// The styles of the open `<text>` and `<tspan>` elements, outermost first.
@@ -41,7 +41,7 @@ impl Translator {
                 format!("`{}` is not closed", frame.name),
             ));
         }
-        Ok(mem::take(&mut self.document))
+        Ok(self.document.into_text())
     }
 
     fn start(&mut self, element: Element) -> Result<(), SvgError> {

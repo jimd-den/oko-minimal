@@ -9,8 +9,8 @@
 //! `polyline`, straight-line `path`, `text` with its `tspan` lines, and `g`
 //! with a translation; it refuses curves, opacity, rotation and unknown
 //! elements by name and line. The output obeys the document parser's limits,
-//! so a translated file can never be rejected later for a size the translator
-//! accepted.
+//! including its budget of operations, so a translated file can never be
+//! rejected later for a size the translator accepted.
 //!
 //! This is the only new component in the authoring path. If the translator is
 //! wrong, the document it wrote is still readable, and the fix is a diff.
@@ -82,6 +82,57 @@ mod tests {
             translate("<svg viewBox=\"0 0 20 20\"><text/>stray</svg>").expect_err("a stray label");
 
         assert!(error.problem.contains("only supported inside"));
+    }
+
+    /// A panel with more operations than the document format allows is
+    /// refused, and the refusal names the element that pushed it over.
+    ///
+    /// Each polyline of five points writes four `line` directives, so the
+    /// thousand-and-twenty-fifth polyline is the one that passes the budget.
+    #[test]
+    fn a_panel_too_large_for_the_format_is_refused() {
+        let error = translate(&polylines(2000)).expect_err("a panel over the budget");
+
+        let over = crate::core::document::MAX_OPS / 4 + 1;
+        assert!(
+            error
+                .problem
+                .contains(&crate::core::document::MAX_OPS.to_string())
+        );
+        assert_eq!(error.line, over + 1);
+    }
+
+    /// A panel of exactly the format's budget is written, because the parser
+    /// accepts exactly that many operations.
+    #[test]
+    fn a_panel_of_the_whole_budget_is_written() {
+        let svg = polylines(crate::core::document::MAX_OPS / 4);
+
+        let document = translate(&svg).expect("a panel of the whole budget");
+
+        assert_eq!(document.lines().count(), crate::core::document::MAX_OPS);
+        assert!(crate::core::document::parse(&document).is_ok());
+    }
+
+    #[test]
+    fn a_translated_panel_is_a_document_the_parser_accepts() {
+        let svg = "<svg viewBox=\"0 0 80 48\"><rect x=\"2\" y=\"2\" width=\"10\" height=\"6\" fill=\"#ff9d00\"/><polyline points=\"0,0 1,1 2,2\" fill=\"none\" stroke=\"#ffffff\"/><text x=\"6\" y=\"24\" font-size=\"21\" fill=\"#ffffff\">OKO</text></svg>";
+
+        let document = translate(svg).expect("a translated panel");
+
+        assert!(crate::core::document::parse(&document).is_ok());
+    }
+
+    /// An SVG of polylines, one per line, each writing four operations.
+    fn polylines(count: usize) -> String {
+        let mut svg = String::from("<svg viewBox=\"0 0 80 48\">\n");
+        for _ in 0..count {
+            svg.push_str(
+                "<polyline points=\"0,0 1,1 2,2 3,3 4,4\" fill=\"none\" stroke=\"#ffffff\"/>\n",
+            );
+        }
+        svg.push_str("</svg>");
+        svg
     }
 
     #[test]
