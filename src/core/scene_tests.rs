@@ -4,7 +4,7 @@
 mod tests {
     use crate::core::geom::{Rect, Rgba};
     use crate::core::motion::{Leg, Motion};
-    use crate::core::scene::{Element, Scene};
+    use crate::core::scene::{Condition, Element, Scene};
     use crate::core::shape::Shape;
 
     fn element(motion: Motion) -> Element {
@@ -42,5 +42,68 @@ mod tests {
         scene.push(element(Motion::none()));
 
         assert_eq!(scene.duration(), 2_500);
+    }
+
+    fn rect() -> Shape {
+        Shape::Rect {
+            area: Rect::new(0, 0, 4, 4),
+            color: Rgba::WHITE,
+        }
+    }
+
+    fn conditioned(condition: Condition) -> Element {
+        Element::when(rect(), Motion::none(), condition).expect("a conditioned element")
+    }
+
+    #[test]
+    fn an_element_without_a_condition_is_drawn_always() {
+        let element = Element::new(rect(), Motion::none()).expect("an element");
+
+        assert_eq!(element.condition, Condition::Always);
+    }
+
+    #[test]
+    fn an_element_carries_its_condition() {
+        let element = conditioned(Condition::Flag("shown".to_string()));
+
+        assert_eq!(element.condition, Condition::Flag("shown".to_string()));
+    }
+
+    #[test]
+    fn a_scene_keeps_the_elements_whose_condition_holds() {
+        let mut scene = Scene::new();
+        scene.push(conditioned(Condition::Always));
+        scene.push(conditioned(Condition::Flag("shown".to_string())));
+
+        let kept = scene.satisfying(|condition| matches!(condition, Condition::Flag(_)));
+
+        assert_eq!(kept.len(), 1);
+        assert_eq!(
+            kept.elements()[0].condition,
+            Condition::Flag("shown".to_string())
+        );
+    }
+
+    #[test]
+    fn a_scene_drops_the_elements_whose_condition_does_not_hold() {
+        let mut scene = Scene::new();
+        scene.push(conditioned(Condition::Always));
+        scene.push(conditioned(Condition::Flag("shown".to_string())));
+
+        let kept = scene.satisfying(|condition| !matches!(condition, Condition::Flag(_)));
+
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept.elements()[0].condition, Condition::Always);
+    }
+
+    #[test]
+    fn the_scene_at_a_moment_keeps_the_condition() {
+        let mut scene = Scene::new();
+        scene.push(conditioned(Condition::Flag("shown".to_string())));
+
+        assert_eq!(
+            scene.at(0).elements()[0].condition,
+            Condition::Flag("shown".to_string())
+        );
     }
 }
