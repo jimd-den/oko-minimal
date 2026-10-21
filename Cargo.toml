@@ -1,0 +1,15 @@
+[package]
+name = "oko-minimal"
+version = "0.1.0"
+edition = "2024"
+default-run = "oko"
+
+[lib]
+name = "oko"
+path = "src/lib.rs"
+
+[[bin]]
+name = "oko"
+path = "src/main.rs"
+
+[dependencies]

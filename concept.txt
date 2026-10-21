@@ -1,0 +1,249 @@
+ # SRD-002 — ỌKỌ Console
+
+    Status: draft · Date: 2026-10-21
+    Supersedes: the first-screen assumptions of SRD-001
+    Scope: first screen, authentication handoff, session lease, display and input arbitration
+
+    ## 0. One sentence
+
+    ỌKỌ Console replaces the first console screen on a barebones Unix/BSD
+    machine, authenticates through the platform's login, and hands a display/input
+    lease to an unprivileged user session — without requiring a browser, a GPU, a
+    display server, or a network.
+
+    ## 1. Non-goals
+
+    - Not a kernel, not `init`, not a replacement for `/etc/rc`.
+    - Not a desktop for existing X11 or Wayland applications.
+    - Not a browser in the boot path.
+    - Not a multi-surface window manager in v1.
+    - Not a new authentication stack. Passwords belong to `login`, PAM or BSD auth.
+    - Not a promise that HTML/CSS/JS is the UI language.
+
+    ## 2. Target platforms
+
+    1. OpenBSD: `wscons`/`wsdisplay` framebuffer, `wskbd`/`wsmouse` input, `/etc/ttys`.
+    2. Linux: fbdev first, DRM/KMS later, evdev input, systemd getty unit.
+    3. Other Unix-like systems: adapters only after a tested build and boot.
+
+    A platform is supported only when the core builds and the first screen reaches
+    login on that platform, not when an adapter merely compiles.
+
+    ## 3. Decisions
+
+    ### D1 — The first screen is a real, minimal screen
+
+    `oko-console` owns the console display and input before any session starts.
+    It draws boot progress, diagnostics, a login prompt, and recovery text. It uses
+    rectangles, lines, bitmap text, and images only. It does not use a browser,
+    font shaping, a GPU, a display server, or the network.
+
+    ### D2 — Display and input are leases
+
+    `oko-console` is the only owner of the display and input devices at boot. It
+    grants a time-bounded, revocable lease to one session compositor. Exactly one
+    process presents at a time.
+
+    On session exit, crash, timeout, or secure escape, the lease is revoked and
+    `oko-console` redraws. The machine must never be left with no usable screen.
+
+    ### D3 — The dependency floor is `std` + `libc`
+
+    The core — console, lease, input arbitration, presenters, socket, display
+    list — builds with Rust `std` and `libc` only. It must build on OpenBSD with
+    no browser engine, no fontconfig, no GPU stack, and no C toolkit.
+
+    Optional renderers are separate crates or processes:
+
+    - `tiny-skia` for anti-aliased geometry;
+    - `ab_glyph` or `fontdue` for font rasterization;
+    - `cosmic-text` for shaping and layout;
+    - `resvg` for SVG authoring;
+    - a Servo client for web content.
+
+    A missing optional renderer degrades the interface; it does not prevent boot or
+    login.
+
+    ### D4 — The UI format is a display list first
+
+    The core protocol carries primitives:
+
+    `rect`, `line`, `arc`, `polyline`, `path`, `text`, `image`, `clip`,
+    `transform`, `opacity`.
+
+    This fits instrument-panel interfaces (LCARS, AVP, gauges, rules, large type)
+    better than document layout. SVG is an optional authoring client that produces
+    the same display list or a frame. HTML/CSS/JS is an optional web client, never
+    the platform language.
+
+    ### D5 — Authentication is delegated
+
+    `oko-console` reads a username, validates it, and execs the system `login`
+    (or the platform's BSD auth path). It never reads a password, never links PAM,
+    never runs setuid, and passes the username as one argument.
+
+    The user's shell is `oko-session`, or the session is started by the
+    platform's login path. A plain shell remains available on a fallback VT.
+
+    ### D6 — Failure is a first-class state
+
+    Every service reports `starting`, `ready`, `degraded`, `failed`, or
+    `unavailable`. A failed renderer, session, or web client returns control to
+    the console. Restart attempts are bounded. Recovery must not depend on the
+    browser, the GPU, or the network.
+
+    ## 4. Processes and trust
+
+    | Process | Trust | Responsibility |
+    |---|---|---|
+    | `oko-supervisor` | trusted, minimal | service graph, restart budgets, leases |
+    | `oko-console` | trusted console | first screen, login prompt, display/input owner |
+    | platform `login` | privileged, system | password, PAM/BSD auth, privilege drop |
+    | `oko-session` | unprivileged | user session, app lifecycle |
+    | `oko-display` | unprivileged | compositor, surfaces, presenters |
+    | renderer client | per-app | scene, SVG, web, native canvas |
+    | `oko-web` | untrusted content | optional Servo/WebView process |
+
+    Zone rules:
+
+    - A web page is untrusted content. It never receives console authority.
+    - A renderer receives pixels and input for its surface; it does not open the
+      keyboard or framebuffer device.
+    - Only the console or the holder of the display lease may present.
+    - Input goes only to the focused surface, except the reserved escape path.
+
+    ## 5. Requirements
+
+    ### First screen
+
+    - CON-001: Draw a boot screen on a TTY or wscons/fbdev framebuffer.
+    - CON-002: Draw with built-in bitmap text; no external font required.
+    - CON-003: Show boot progress, failures and recovery instructions.
+    - CON-004: Reach a login prompt with no browser, GPU, network or display server.
+    - CON-005: Remain usable when every optional service is absent.
+    - CON-006: Redraw after a session crash or lease revocation.
+    - CON-007: Never print credentials or secrets.
+
+    ### Lease
+
+    - LEASE-001: Exactly one display owner at a time.
+    - LEASE-002: A lease has an owner, a generation and a revocation path.
+    - LEASE-003: Revocation is checked on every present and input delivery.
+    - LEASE-004: A crashed holder cannot block the console.
+    - LEASE-005: A stale lease cannot present after revocation.
+    - LEASE-006: Lease acquisition and release are logged without secrets.
+    - LEASE-007: The console can always reclaim the display.
+
+    ### Input
+
+    - INP-001: The console owns input at boot.
+    - INP-002: Input goes only to the focused surface.
+    - INP-003: Unfocused surfaces receive nothing.
+    - INP-004: A reserved escape chord is handled before routing.
+    - INP-005: Pointer and keyboard input use platform adapters
+      (`wskbd`/`wsmouse`, evdev, TTY).
+    - INP-006: Raw device handles are not passed to ordinary apps.
+    - INP-007: Input is dropped, not queued without bound, when no surface has focus.
+
+    ### Display
+
+    - DSP-001: Present to TTY, wscons, fbdev, and later DRM/KMS.
+    - DSP-002: Presenters are swappable behind one interface.
+    - DSP-003: A frame is RGBA8888 with explicit stride and size.
+    - DSP-004: Surface commits are bounded and validated.
+    - DSP-005: A failed presenter returns control to the console.
+    - DSP-006: Full-frame v1 is acceptable; damage rectangles and shared memory
+      are performance follow-ups.
+
+    ### Renderers
+
+    - REN-001: The built-in renderer draws the display list with bitmap text.
+    - REN-002: Optional renderers are separate processes or feature-gated crates.
+    - REN-003: A renderer cannot grant capabilities or read console devices.
+    - REN-004: The scene renderer may use `tiny-skia`; fonts are optional.
+    - REN-005: SVG is an optional authoring client.
+    - REN-006: Web content is an optional client and is visibly marked as such.
+    - REN-007: A renderer crash does not terminate the console or session.
+
+    ### Authentication and session
+
+    - AUTH-001: Delegate password verification to the platform login.
+    - AUTH-002: The console never handles a password.
+    - AUTH-003: The session runs unprivileged.
+    - AUTH-004: A failed session returns to the login prompt.
+    - AUTH-005: A fallback getty remains available on another VT.
+
+    ### Configuration and recovery
+
+    - CFG-001: Validate configuration before applying it.
+    - CFG-002: Preserve a known-good configuration.
+    - CFG-003: A bad configuration cannot prevent the console from starting.
+    - REC-001: Text recovery is independent of the browser and GPU.
+    - REC-002: Diagnostics survive a failed graphical/session start.
+    - REC-003: Rollback and disable-startup procedures are documented and tested.
+
+    ## 6. Dependency policy
+
+    - Core: `std` + `libc` only.
+    - Optional, recorded and pinned:
+      - `tiny-skia` for 2D geometry;
+      - `ab_glyph` or `fontdue` for glyphs;
+      - `cosmic-text` for shaping;
+      - `resvg` for SVG;
+      - a Servo client for web, built as a separate process.
+    - Not allowed in the boot path: Servo, SpiderMonkey, WebRender, GStreamer,
+      fontconfig, a GPU stack, a GUI toolkit, a display server.
+    - Every optional component has: exact version, license, source, checksum,
+      owner, update procedure, and a build that can be disabled.
+    - The OpenBSD core build is a gate. It must pass with no optional renderer.
+
+    ## 7. Acceptance tests
+
+    - AT-001: OpenBSD core builds with only `std` + `libc`.
+    - AT-002: First screen reaches login on TTY and wscons with no browser/GPU/network.
+    - AT-003: Login hands off to an unprivileged session; console never sees a password.
+    - AT-004: Session crash returns to a usable console.
+    - AT-005: Exactly one display owner; a stale lease cannot present.
+    - AT-006: Unfocused input is not delivered.
+    - AT-007: Reserved escape is handled before routing.
+    - AT-008: Missing renderer leaves console and login usable.
+    - AT-009: Bad configuration leaves console and recovery usable.
+    - AT-010: Fallback getty on another VT works.
+    - AT-011: A scene panel (LCARS/AVP style) renders and accepts one input event.
+    - AT-012: The same frame presents to TTY and wscons/fbdev.
+    - AT-013: Optional renderer crash does not terminate console or session.
+    - AT-014: Boot and recovery exercise in a VM.
+    - AT-015: No secrets in logs or crash output.
+
+    ## 8. Milestones
+
+    - M0: `oko-console` on serial/TTY, bitmap text, no optional crates. Boot text,
+      diagnostics, login handoff.
+    - M1: OpenBSD wscons framebuffer and keyboard; console draws and accepts input;
+      fallback getty on another VT.
+    - M2: Supervisor and lease handoff to `oko-session`; crash returns to console.
+    - M3: Display-list protocol and `tiny-skia` scene renderer; one LCARS/AVP-style
+      panel.
+    - M4: Focused input, app launch, one non-terminal app.
+    - M5: Optional SVG client; then optional web client; Linux fbdev; DRM later.
+
+    ## 9. Critical invariant
+
+    > The machine must always reach a usable first screen and a login prompt
+    > without a browser, a GPU, a display server, or a network. Every interface
+    > renderer is an optional client, and a failed renderer must return control to
+    > the console.
+
+    ## 10. Open questions
+
+    1. Does `oko-console` run as root for device access, or start with a small
+       device-rights helper and drop privileges?
+    2. Is the lease a Unix socket right, an fd, or both?
+    3. Is the first screen one process or a supervisor plus a console child?
+    4. Does the session compositor own the display lease, or does `oko-display`
+       own it and the session only owns a surface?
+    5. Which bitmap font is bundled, and what is its license?
+    6. Does the core render text with a bitmap font only, or include `ab_glyph`
+       from M1?
+    7. What is the exact OpenBSD wscons ioctl set and the fallback when it is
+       unavailable?

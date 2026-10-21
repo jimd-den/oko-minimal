@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80" height="48" viewBox="0 0 80 48" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="80" height="48" fill="#05070a"/>
+  <g transform="translate(2 2)">
+    <rect x="0" y="0" width="76" height="44" fill="#0b1220"/>
+    <rect x="2" y="2" width="72" height="1" fill="#ff9d00"/>
+    <path d="M2 6 H34 V8 H2 Z" fill="#1f6feb"/>
+    <path d="M38 6 H58 V8 H38 Z" fill="#3fb950"/>
+    <path d="M62 6 H74 V8 H62 Z" fill="#d29922"/>
+    <line x1="2" y1="32" x2="74" y2="32" stroke="#1f2937"/>
+    <path d="M2 36 H26 V39 H2 Z" fill="#1f6feb"/>
+    <path d="M30 36 H54 V39 H30 Z" fill="#3fb950"/>
+    <path d="M58 36 H74 V39 H58 Z" fill="#d29922"/>
+  </g>
+</svg>
