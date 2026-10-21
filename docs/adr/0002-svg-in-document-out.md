@@ -20,19 +20,23 @@ writes something the console must interpret at runtime.
 
 - Input: the subset of SVG that a panel export uses — `svg`, `g`, `rect`,
   `line`, `polyline`, straight-line `path` (`M`, `L`, `H`, `V`, `Z`), `translate`
-  transforms, `viewBox` origin, hex and `rgb()` colours, full opacity, and
-  `text` with its `tspan` lines, which ADR 0003 added later.
+  transforms, `viewBox` origin, hex, `rgb()` and `rgba()` colours and the CSS
+  colour names, full opacity, and `text` with its `tspan` lines, which ADR
+  0003 added later. A fill stated on a group is inherited by its children, as
+  SVG says, and the structural elements — `defs`, `style`, `pattern`, gradients,
+  clip paths — are skipped rather than refused.
 - Output: the existing panel document, one directive per line.
 - The document remains the source of truth. It is human-readable, diffable, hot
   reloadable, and independent of the editor that produced it.
 - The translator is total and bounded: 1 MiB input, 4096 elements, 64 attributes
   per element, 4096 path points, and the document format's own coordinate and
   size limits. Every refusal names a line.
-- Curves, rotation, scale, opacity below one, inheritance on groups and unknown
-  elements are refused, not approximated. Text was refused on the same grounds
-  until the built-in font made a mapping possible; ADR 0003 records what
-  replaced that refusal. A silent approximation is a picture nobody can trace
-  back to the source.
+- Curves, rotation, scale, opacity below one and unknown elements are refused,
+  not approximated. Text was refused on the same grounds until the built-in
+  font made a mapping possible; ADR 0003 records what replaced that refusal.
+  A paint reference such as `url(#gradient)` is refused by name, because
+  resolving a paint server is a different job from reading a colour. A silent
+  approximation is a picture nobody can trace back to the source.
 
 `oko-svg panel.svg > panel.oko` is the whole bridge. The translator is a library
 function (`adapters::svg::translate`) first and a binary second, so it is tested
@@ -61,8 +65,9 @@ without a filesystem.
 - The translator must track the document grammar's limits. It imports the same
   constants, so the two cannot drift, and it counts the operations it writes,
   because one element can become many directives.
-- The editor's output is not trusted. The XML scanner refuses doctypes and
-  entities, and the translator refuses anything outside its whitelist.
+- The editor's output is not trusted. The XML scanner refuses doctypes, and
+  decodes the entities an export writes, and the translator refuses anything
+  outside its whitelist.
 
 ## Revisit if
 

@@ -23,9 +23,13 @@ no more.
 
 **Reading text.** The XML reader gains a text event. A character run that is
 not only whitespace is delivered as `Text { content, line }`; whitespace-only
-runs stay ignored, as they are today. A run containing `&` is refused:
-entities are not decoded. A text event outside a `<text>` or `<tspan>` element
-is an error, not a warning.
+runs stay ignored, as they are today. A run containing `&` is decoded: the five XML
+entities and numeric references become the characters they name. The research
+in `docs/reports/svg-export-shapes.md` showed why — a real Figma export writes
+`&#10;` for a soft line break, and a real Penpot export writes `&quot;` for
+any font family with a space in it, so refusing an entity refused the whole
+file over a character the author never typed. A text event outside a `<text>`
+or a `<tspan>` element is an error, not a warning.
 
 **Elements.** `<text>` and `<tspan>` are supported. Every other element keeps
 its current behaviour.
@@ -39,8 +43,10 @@ rather than approximate, because the built-in font has no descenders — its
 bottom row is the baseline.
 
 A `<tspan>` may carry its own `x` and `y`; otherwise it inherits the
-`<text>`'s. A `dy` adds to the baseline it inherits, which is how exporters
-express a second line.
+`<text>`'s. A `dy` adds to the baseline it inherits. Neither Figma nor Penpot
+writes `dy`: Figma gives a second `<tspan>` its own absolute `y`, and Penpot
+writes a second `<text>`. The rule is kept because it is cheap and correct
+when it appears, not because it is common.
 
 **Size.** `font-size` is read from the attribute or from a `style` attribute
 of the form `font-size: 14px`. A missing size is 7.
@@ -51,7 +57,9 @@ it is the one approximation in the translator: SVG measures an em box, this
 measures a glyph. A 21-pixel label becomes scale 3, a 7-pixel label scale 1.
 
 **Colour.** `fill` is read exactly as it is for other shapes, with black for a
-missing fill and no text for `fill="none"`.
+missing fill and no text for `fill="none"`. A Penpot export keeps the fill in
+its `style` attribute instead of a `fill` attribute, so the style is read when
+the attribute is absent, and a fill inherited from a group is honoured.
 
 **Precedence.** Where a size is stated twice, the `font-size` attribute wins
 over a `style` attribute, even though CSS says the opposite. The attribute is
