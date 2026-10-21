@@ -1,0 +1,182 @@
+//! A panel: the scene it draws, the flags it holds, and the keys it answers.
+//!
+//! The panel is the content's own state. The session is about the screen's
+//! authority - the lease and the focus - and the flags are about what is on
+//! screen, so the two are not merged (ADR 0009).
+//!
+//! A key arrives, a binding fires, a flag changes, and the shapes whose
+//! condition holds are what the panel draws. A panel can do nothing else: it
+//! may not run a command, read a file, or change anything outside itself.
+
+use std::fmt;
+
+use super::binding::{Action, Binding};
+use super::event::Key;
+use super::scene::{Condition, Scene};
+
+/// A named flag and its value.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Flag {
+    name: String,
+    value: bool,
+}
+
+impl Flag {
+    pub fn new(name: impl Into<String>, value: bool) -> Self {
+        Self {
+            name: name.into(),
+            value,
+        }
+    }
+
+    /// The name the flag is known by.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// The value the flag holds.
+    pub fn value(&self) -> bool {
+        self.value
+    }
+}
+
+/// What a key did to the panel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Outcome {
+    /// Nothing changed: the panel is as it was and needs no repaint.
+    Unchanged,
+    /// A flag changed: the panel is different and the runtime should repaint.
+    Changed,
+    /// The binding asked the program to end.
+    Quit,
+}
+
+/// Why a panel refused to be built.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PanelError {
+    /// A binding or a condition named a flag that was not declared.
+    UndeclaredFlag { flag: String },
+}
+
+impl fmt::Display for PanelError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PanelError::UndeclaredFlag { flag } => {
+                write!(f, "the flag `{flag}` is not declared")
+            }
+        }
+    }
+}
+
+/// A panel: a scene, the flags it holds, and the bindings it answers.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Panel {
+    scene: Scene,
+    flags: Vec<Flag>,
+    bindings: Vec<Binding>,
+}
+
+impl Panel {
+    /// The panel of `scene`, `flags` and `bindings`.
+    ///
+    /// A flag that is not declared is not a flag, so a binding or a condition
+    /// that names one is refused here rather than ignored later.
+    pub fn new(scene: Scene, flags: Vec<Flag>, bindings: Vec<Binding>) -> Result<Self, PanelError> {
+        for binding in &bindings {
+            if let Action::Set { flag, .. } = binding.action()
+                && !declares(&flags, flag)
+            {
+                return Err(PanelError::UndeclaredFlag { flag: flag.clone() });
+            }
+        }
+        for element in scene.elements() {
+            if let Condition::Flag(name) = &element.condition
+                && !declares(&flags, name)
+            {
+                return Err(PanelError::UndeclaredFlag { flag: name.clone() });
+            }
+        }
+        Ok(Self {
+            scene,
+            flags,
+            bindings,
+        })
+    }
+
+    /// The scene to draw at `now` milliseconds.
+    ///
+    /// The shapes whose flag is false are not in it; the rest are as they are
+    /// at the moment asked for.
+    pub fn scene(&self, now: u64) -> Scene {
+        self.scene
+            .satisfying(|condition| self.holds(condition))
+            .at(now)
+    }
+
+    /// The value of the named flag, if it is a flag of this panel.
+    pub fn flag(&self, name: &str) -> Option<bool> {
+        self.flags
+            .iter()
+            .find(|flag| flag.name == name)
+            .map(|flag| flag.value)
+    }
+
+    /// The flags the panel holds.
+    pub fn flags(&self) -> &[Flag] {
+        &self.flags
+    }
+
+    /// The bindings the panel answers.
+    pub fn bindings(&self) -> &[Binding] {
+        &self.bindings
+    }
+
+    /// The key arrives, and the panel says what it did.
+    ///
+    /// The answer is an outcome and not a bool because there are three
+    /// answers, not two: nothing happened, a flag changed, or the program
+    /// should end. A bool would have to carry the last one in its
+    /// neighbourhood.
+    pub fn key(&mut self, key: Key) -> Outcome {
+        let Some(action) = self.action_for(key) else {
+            return Outcome::Unchanged;
+        };
+        match action {
+            Action::Quit => Outcome::Quit,
+            Action::Set { flag, value } => self.set(&flag, value),
+        }
+    }
+
+    /// What the key does, if it is bound.
+    fn action_for(&self, key: Key) -> Option<Action> {
+        self.bindings
+            .iter()
+            .find(|binding| binding.key() == key)
+            .map(|binding| binding.action().clone())
+    }
+
+    /// The flag takes the value, and the panel says whether that changed it.
+    fn set(&mut self, name: &str, value: bool) -> Outcome {
+        let Some(flag) = self.flags.iter_mut().find(|flag| flag.name == name) else {
+            return Outcome::Unchanged;
+        };
+        if flag.value == value {
+            return Outcome::Unchanged;
+        }
+        flag.value = value;
+        Outcome::Changed
+    }
+
+    /// Whether the condition holds in this panel.
+    fn holds(&self, condition: &Condition) -> bool {
+        match condition {
+            Condition::Always => true,
+            Condition::Flag(name) => self.flag(name) == Some(true),
+        }
+    }
+}
+
+/// Whether the flags declare the named one.
+fn declares(flags: &[Flag], name: &str) -> bool {
+    flags.iter().any(|flag| flag.name == name)
+}

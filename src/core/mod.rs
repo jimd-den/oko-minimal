@@ -4,6 +4,9 @@
 //! Nothing here reads a file, opens a device, or writes to a terminal. That is
 //! what makes every rule below testable in one line.
 
+pub mod binding;
+#[cfg(test)]
+mod binding_tests;
 pub mod blend;
 pub mod clip;
 pub mod curve;
@@ -17,6 +20,9 @@ pub mod interpolate;
 pub mod lease;
 pub mod motion;
 pub mod paint;
+pub mod panel;
+#[cfg(test)]
+mod panel_tests;
 pub mod path;
 pub mod raster;
 #[cfg(test)]
