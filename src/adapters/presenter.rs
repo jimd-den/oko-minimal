@@ -6,9 +6,11 @@
 //! returns the bytes a terminal would receive - so the whole presenter can
 //! be tested without a terminal.
 //!
-//! Two shapes of the same work live here. `paint` writes a frame as a
+//! Three shapes of the same work live here. `paint` writes a frame as a
 //! stream of lines, which is what a pipe wants. `screen` places the rows
-//! on a screen, which is what a terminal wants. Neither knows about a
+//! on a screen, which is what a terminal wants. `damage` sends only the
+//! cells that changed, which is what a live console wants: a picture that
+//! has not moved costs no bytes at all. None of them knows about a
 //! device; the terminal adapter owns the device.
 //!
 //! Twenty-four bit colour is assumed. A palette fallback is a separate
@@ -20,6 +22,8 @@ use crate::core::frame::Frame;
 use crate::core::geom::Rgba;
 use crate::core::raster;
 
+use super::screen::{Cell, Changed};
+
 /// The upper half block: `▀`.
 const HALF_BLOCK: char = '\u{2580}';
 
@@ -29,6 +33,51 @@ const HALF_BLOCK: char = '\u{2580}';
 /// by `rows` cells is a frame of `columns` by `rows * 2` pixels.
 pub fn pixel_size(columns: u32, rows: u32) -> (u32, u32) {
     (columns, rows.saturating_mul(2))
+}
+
+/// The bytes that bring a screen up to date with a frame.
+///
+/// Only the cells that changed are sent. A run of cells that stand next to
+/// each other is addressed with one cursor move and then written, so a
+/// picture that has not changed costs no bytes at all.
+///
+/// The bytes stand on their own: every run says which colour it paints,
+/// so a run may be read without the run before it.
+pub fn damage(changes: &[Changed]) -> String {
+    let mut bytes = String::new();
+    let mut start = 0;
+    while start < changes.len() {
+        let end = run_end(changes, start);
+        let first = changes[start];
+        bytes.push_str(&format!("\x1b[{};{}H", first.row + 1, first.column + 1));
+        let mut previous: Option<Cell> = None;
+        for change in &changes[start..end] {
+            if previous != Some(change.cell) {
+                bytes.push_str(&escape(change.cell.top, change.cell.bottom));
+                previous = Some(change.cell);
+            }
+            bytes.push(HALF_BLOCK);
+        }
+        start = end;
+    }
+    bytes
+}
+
+/// Where the run of cells that stand next to each other ends.
+///
+/// A run stops at a cell that is not next to the one before it: the cells
+/// in between did not change, and painting over them would spoil them.
+fn run_end(changes: &[Changed], start: usize) -> usize {
+    let mut end = start + 1;
+    while end < changes.len() {
+        let before = changes[end - 1];
+        let after = changes[end];
+        if after.row != before.row || after.column != before.column + 1 {
+            break;
+        }
+        end += 1;
+    }
+    end
 }
 
 /// The bytes of a document, painted at the given size in pixels.

@@ -13,6 +13,9 @@ mod presenter_tests;
 pub mod runtime;
 #[cfg(test)]
 mod runtime_tests;
+pub mod screen;
+#[cfg(test)]
+mod screen_tests;
 pub mod sequence;
 #[cfg(test)]
 mod sequence_tests;
