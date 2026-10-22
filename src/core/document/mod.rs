@@ -36,6 +36,7 @@ mod words_tests;
 pub use error::ParseError;
 
 use super::binding::Action;
+use super::event::Key;
 use super::panel::{Flag, Panel, PanelError};
 use super::scene::{Condition, Scene};
 use directive::Addition;
@@ -52,6 +53,9 @@ pub fn parse(text: &str) -> Result<Panel, Vec<ParseError>> {
 
     // Where each flag was used, so that a refusal can name the line.
     let mut uses: Vec<(String, usize)> = Vec::new();
+    // The keys that are bound, and the lines they were bound on, so that
+    // a refusal can name the line of the second binding.
+    let mut bound: Vec<(Key, usize)> = Vec::new();
 
     for (index, line) in text.lines().enumerate() {
         let number = index + 1;
@@ -92,6 +96,7 @@ pub fn parse(text: &str) -> Result<Panel, Vec<ParseError>> {
                 if let Action::Set { flag, .. } = binding.action() {
                     uses.push((flag.clone(), number));
                 }
+                bound.push((binding.key(), number));
                 bindings.push(binding);
             }
             Err(problem) => errors.push(ParseError::new(number, problem)),
@@ -105,13 +110,28 @@ pub fn parse(text: &str) -> Result<Panel, Vec<ParseError>> {
     match Panel::new(scene, flags, bindings) {
         Ok(panel) => Ok(panel),
         Err(problem) => {
-            let PanelError::UndeclaredFlag { flag } = &problem;
-            let line = uses
-                .iter()
-                .find(|(name, _)| name == flag)
-                .map(|(_, line)| *line)
-                .unwrap_or(1);
+            let line = line_of(&problem, &uses, &bound);
             Err(vec![ParseError::new(line, problem.to_string())])
         }
+    }
+}
+
+/// The line a refusal is about.
+///
+/// A flag that was not declared is refused at the line that used it, and a
+/// key that is bound twice is refused at the line that bound it again.
+fn line_of(problem: &PanelError, uses: &[(String, usize)], bound: &[(Key, usize)]) -> usize {
+    match problem {
+        PanelError::UndeclaredFlag { flag } => uses
+            .iter()
+            .find(|(name, _)| name == flag)
+            .map(|(_, line)| *line)
+            .unwrap_or(1),
+        PanelError::DuplicateKey { key } => bound
+            .iter()
+            .rev()
+            .find(|(bound, _)| bound == key)
+            .map(|(_, line)| *line)
+            .unwrap_or(1),
     }
 }
