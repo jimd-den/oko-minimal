@@ -13,6 +13,7 @@ use std::fmt;
 use super::binding::{Action, Binding};
 use super::event::Key;
 use super::scene::{Condition, Element, Scene};
+use super::typeface::Setting;
 
 /// A named flag and its value.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -74,6 +75,8 @@ pub struct Panel {
     scene: Scene,
     flags: Vec<Flag>,
     bindings: Vec<Binding>,
+    /// The font the panel is set in, if it is set in one.
+    font: Option<Setting>,
 }
 
 impl Panel {
@@ -100,7 +103,23 @@ impl Panel {
             scene,
             flags,
             bindings,
+            font: None,
         })
+    }
+
+    /// The font the panel is set in, and the weight it is set at.
+    ///
+    /// The font belongs to the panel and not to a shape: a panel that
+    /// changes its font changes one thing, and the shapes it draws are the
+    /// shapes it had. The letterforms are looked up again when the text is
+    /// drawn.
+    pub fn set_font(&mut self, font: Option<Setting>) {
+        self.font = font;
+    }
+
+    /// The font the panel is set in, if it is set in one.
+    pub fn font(&self) -> Option<&Setting> {
+        self.font.as_ref()
     }
 
     /// How long the panel's shapes keep changing.

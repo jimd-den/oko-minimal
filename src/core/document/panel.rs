@@ -20,6 +20,7 @@ use super::super::binding::{Action, Binding};
 use super::super::event::{Key, KeyCode};
 use super::super::panel::Flag;
 use super::super::scene::Condition;
+use super::super::typeface::Setting;
 use super::words::{WHEN, Words};
 
 /// A flag, read from the words after `flag`.
@@ -36,6 +37,32 @@ pub(crate) fn flag(words: &mut Words) -> Result<Flag, String> {
     };
     words.end()?;
     Ok(Flag::new(name, value))
+}
+
+/// The font a document sets its panel in, read from the words after `font`.
+///
+/// The font belongs to the panel, so a document that changes it changes one
+/// thing: the shapes it draws are the shapes it had.
+pub(crate) fn font(words: &mut Words) -> Result<Setting, String> {
+    let name = words.value().ok_or("expected the name of a font")?;
+    let mut weight = None;
+    while let Some(word) = words.value() {
+        let (tag, value) = word
+            .split_once('=')
+            .ok_or_else(|| format!("a font is set at an axis, written `wght=700`, not `{word}`"))?;
+        if tag != "wght" {
+            return Err(format!("`{tag}` is not an axis a font may be set at"));
+        }
+        let value: u16 = value
+            .parse()
+            .map_err(|_| format!("`{value}` is not a weight"))?;
+        if !(1..=1000).contains(&value) {
+            return Err(format!("a weight is between 1 and 1000, not {value}"));
+        }
+        weight = Some(value);
+    }
+    words.end()?;
+    Setting::named(name, weight)
 }
 
 /// A binding, read from the words after `on`.
