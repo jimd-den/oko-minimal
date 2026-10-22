@@ -18,6 +18,7 @@
 use super::motion::Motion;
 use super::shape::Shape;
 use super::timeline;
+use super::typeface::Setting;
 
 /// The condition under which an element is drawn.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -73,6 +74,8 @@ impl Element {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Scene {
     elements: Vec<Element>,
+    /// The font the scene is drawn in, if it is drawn in one.
+    font: Option<Setting>,
 }
 
 impl Scene {
@@ -86,6 +89,20 @@ impl Scene {
 
     pub fn elements(&self) -> &[Element] {
         &self.elements
+    }
+
+    /// The font the scene is drawn in, if it is drawn in one.
+    ///
+    /// The font travels with the display list, not with a shape: the scene
+    /// is what the raster walks, and the raster paints the text in the
+    /// scene's font (ADR 0014).
+    pub fn font(&self) -> Option<&Setting> {
+        self.font.as_ref()
+    }
+
+    /// The font the scene is drawn in.
+    pub fn set_font(&mut self, font: Option<Setting>) {
+        self.font = font;
     }
 
     pub fn len(&self) -> usize {
@@ -110,7 +127,10 @@ impl Scene {
                 condition: element.condition.clone(),
             })
             .collect();
-        Scene { elements }
+        Scene {
+            elements,
+            font: self.font.clone(),
+        }
     }
 
     /// The scene of the elements whose condition holds.
@@ -125,6 +145,7 @@ impl Scene {
                 .filter(|element| holds(&element.condition))
                 .cloned()
                 .collect(),
+            font: self.font.clone(),
         }
     }
 
