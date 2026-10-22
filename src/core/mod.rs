@@ -25,8 +25,6 @@ pub mod paint;
 pub mod panel;
 pub mod path;
 pub mod raster;
-#[cfg(test)]
-mod raster_tests;
 pub mod scene;
 #[cfg(test)]
 mod scene_tests;
@@ -36,8 +34,6 @@ pub mod shape;
 mod shape_tests;
 pub mod syntax;
 pub mod text;
-#[cfg(test)]
-mod text_tests;
 pub mod timeline;
 pub mod typeface;
 #[cfg(test)]

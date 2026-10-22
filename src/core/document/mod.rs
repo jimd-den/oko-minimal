@@ -16,6 +16,8 @@ mod directive;
 mod directive_tests;
 mod error;
 mod fields;
+#[cfg(test)]
+mod font_tests;
 mod motion;
 #[cfg(test)]
 mod motion_tests;
