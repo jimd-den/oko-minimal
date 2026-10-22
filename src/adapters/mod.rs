@@ -28,6 +28,8 @@ pub mod sequence;
 #[cfg(test)]
 mod sequence_tests;
 pub mod shell;
+#[cfg(test)]
+mod shell_tests;
 pub mod svg;
 pub mod terminal;
 #[cfg(test)]

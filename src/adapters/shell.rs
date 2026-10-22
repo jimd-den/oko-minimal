@@ -20,6 +20,7 @@ use crate::core::session::Effect;
 use super::keys::Decoder;
 use super::presenter;
 use super::runtime::Runtime;
+use super::screen::Screen;
 use super::terminal::Terminal;
 
 /// How long the loop waits for a key, and how often the picture is looked at.
@@ -44,13 +45,15 @@ pub fn run(path: &Path) -> io::Result<()> {
     let mut runtime = Runtime::new(columns, rows.saturating_mul(2));
     let mut decoder = Decoder::new();
     let mut out = io::stdout();
+    // The cells the terminal is showing: what the damage is measured from.
+    let mut screen: Option<Screen> = None;
 
     let mut seen = stamp(path);
     let mut origin = Instant::now();
     if let Some(text) = read(path) {
         load(&mut runtime, &text);
         origin = Instant::now();
-        present(&mut out, &runtime)?;
+        present(&mut out, &mut screen, &runtime)?;
     }
 
     write!(out, "{ALTERNATE}{HIDE}")?;
@@ -67,7 +70,7 @@ pub fn run(path: &Path) -> io::Result<()> {
             while let Some(event) = decoder.event() {
                 match runtime.event(event) {
                     Some(Effect::ReclaimDisplay) => running = false,
-                    Some(Effect::Repaint) => present(&mut out, &runtime)?,
+                    Some(Effect::Repaint) => present(&mut out, &mut screen, &runtime)?,
                     Some(Effect::Deliver { .. }) | None => {}
                 }
             }
@@ -78,11 +81,11 @@ pub fn run(path: &Path) -> io::Result<()> {
             if let Some(text) = read(path) {
                 load(&mut runtime, &text);
                 origin = Instant::now();
-                present(&mut out, &runtime)?;
+                present(&mut out, &mut screen, &runtime)?;
             }
         }
         if runtime.tick(origin.elapsed().as_millis() as u64) {
-            present(&mut out, &runtime)?;
+            present(&mut out, &mut screen, &runtime)?;
         }
     }
 
@@ -102,11 +105,29 @@ fn load(runtime: &mut Runtime, text: &str) {
 }
 
 /// Put the frame on the screen.
-fn present(out: &mut impl Write, runtime: &Runtime) -> io::Result<()> {
+///
+/// The first frame is painted in full: the terminal has none of it yet.
+/// The frames after that are sent as damage - only the cells that changed
+/// - so a picture that has not moved costs nothing at all.
+pub fn present(
+    out: &mut impl Write,
+    screen: &mut Option<Screen>,
+    runtime: &Runtime,
+) -> io::Result<()> {
     let Some(frame) = runtime.frame() else {
         return Ok(());
     };
-    out.write_all(presenter::screen(frame).as_bytes())?;
+    let fits = screen.as_ref().is_some_and(|screen| screen.fits(frame));
+    let bytes = if fits {
+        let screen = screen.as_mut().expect("a screen that fits");
+        presenter::damage(screen.sync(frame))
+    } else {
+        let mut fresh = Screen::of(frame);
+        fresh.reset(frame);
+        *screen = Some(fresh);
+        presenter::screen(frame)
+    };
+    out.write_all(bytes.as_bytes())?;
     out.flush()
 }
 
