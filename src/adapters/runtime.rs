@@ -1,9 +1,9 @@
 //! The runtime: the state of a console, with no device in it.
 //!
-//! It holds the session, the last good document, and the frame that is on
-//! the screen. It is told two things: that an event arrived, and that the
-//! document changed. It answers with what should happen: paint this frame,
-//! or hand the screen back.
+//! It holds the session, the last good document, and the picture that is
+//! on the screen. It is told two things: that an event arrived, and that
+//! the document changed. It answers with what should happen: paint this
+//! frame, or hand the screen back.
 //!
 //! The device is outside it. The terminal's raw mode, the bytes it reads,
 //! the file's timestamp and the sleep between looks belong to the shell
@@ -14,9 +14,9 @@ use crate::core::event::Event;
 use crate::core::frame::Frame;
 use crate::core::lease::{Generation, Lease, LeaseError, OwnerId};
 use crate::core::panel::{Outcome, Panel};
-use crate::core::raster;
 use crate::core::session::{Effect, Session};
 
+use super::picture::Picture;
 use super::sequence::CHORD;
 
 /// The owner of the display: the console itself.
@@ -26,8 +26,7 @@ const OWNER: OwnerId = OwnerId(1);
 pub struct Runtime {
     session: Session,
     panel: Option<Panel>,
-    frame: Option<Frame>,
-    size: (u32, u32),
+    picture: Picture,
     /// The moment the picture was last painted at.
     at: Option<u64>,
     /// Whether the picture has come to rest at the end of the timeline.
@@ -40,8 +39,7 @@ impl Runtime {
         Self {
             session: Session::new(CHORD),
             panel: None,
-            frame: None,
-            size: (width, height),
+            picture: Picture::new((width, height)),
             at: None,
             settled: false,
         }
@@ -85,7 +83,7 @@ impl Runtime {
     /// still reaches the session (ADR 0009).
     pub fn event(&mut self, event: Event) -> Option<Effect> {
         if let Event::Resize { width, height } = event {
-            self.size = (width, height);
+            self.picture.resize((width, height));
             self.render();
             return self.session.dispatch(event);
         }
@@ -110,7 +108,8 @@ impl Runtime {
     ///
     /// Contract:
     ///   - `now` is the milliseconds since the document arrived.
-    ///   - True when the frame is new and should be painted.
+    ///   - True when the picture is new and the screen must be brought up
+    ///     to date; false when the picture is the same as it was.
     ///   - A panel with no motion is painted once, when it is loaded.
     ///   - After the timeline's end the picture has come to rest and stays.
     pub fn tick(&mut self, now: u64) -> bool {
@@ -124,13 +123,20 @@ impl Runtime {
         if now >= panel.duration() {
             self.settled = true;
         }
-        self.render_at(now);
-        true
+        self.render_at(now)
     }
 
     /// The frame on the screen, if there is one.
     pub fn frame(&self) -> Option<&Frame> {
-        self.frame.as_ref()
+        self.picture.frame()
+    }
+
+    /// How many frame buffers have been made.
+    ///
+    /// The picture is painted into one buffer and written into again, so
+    /// this counts the moments the size changed and not the ticks.
+    pub fn frames_allocated(&self) -> usize {
+        self.picture.frames_allocated()
     }
 
     /// Draw the last good document again, at the current size.
@@ -140,12 +146,15 @@ impl Runtime {
     }
 
     /// Draw the document as it is at this moment.
-    fn render_at(&mut self, now: u64) {
-        let frame = self
-            .panel
-            .as_ref()
-            .and_then(|panel| raster::render(&panel.scene(now), self.size.0, self.size.1));
-        self.frame = frame;
+    ///
+    /// A scene that is the same as the one the picture was painted from
+    /// paints the same picture, so nothing is painted and the frame is
+    /// left as it is.
+    fn render_at(&mut self, now: u64) -> bool {
+        let Some(scene) = self.panel.as_ref().map(|panel| panel.scene(now)) else {
+            return false;
+        };
+        self.picture.paint(scene)
     }
 }
 

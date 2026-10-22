@@ -7,16 +7,29 @@
 pub mod keys;
 #[cfg(test)]
 mod keys_tests;
+pub mod painter;
+#[cfg(test)]
+mod painter_tests;
+pub mod picture;
+#[cfg(test)]
+mod picture_tests;
 pub mod presenter;
 #[cfg(test)]
 mod presenter_tests;
 pub mod runtime;
 #[cfg(test)]
+mod runtime_clock_tests;
+#[cfg(test)]
 mod runtime_tests;
+pub mod screen;
+#[cfg(test)]
+mod screen_tests;
 pub mod sequence;
 #[cfg(test)]
 mod sequence_tests;
 pub mod shell;
+#[cfg(test)]
+mod shell_tests;
 pub mod svg;
 pub mod terminal;
 #[cfg(test)]
