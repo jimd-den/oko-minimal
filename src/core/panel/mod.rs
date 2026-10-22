@@ -20,6 +20,8 @@ use super::typeface::Setting;
 
 mod flags;
 #[cfg(test)]
+mod font_tests;
+#[cfg(test)]
 mod tests;
 
 pub use flags::Flag;
@@ -60,8 +62,6 @@ pub struct Panel {
     scene: Scene,
     flags: Vec<Flag>,
     bindings: Vec<Binding>,
-    /// The font the panel is set in, if it is set in one.
-    font: Option<Setting>,
 }
 
 impl Panel {
@@ -88,7 +88,6 @@ impl Panel {
             scene,
             flags,
             bindings,
-            font: None,
         })
     }
 
@@ -98,13 +97,16 @@ impl Panel {
     /// changes its font changes one thing, and the shapes it draws are the
     /// shapes it had. The letterforms are looked up again when the text is
     /// drawn.
+    ///
+    /// The font is the scene's, because the scene is what the raster walks
+    /// (ADR 0014).
     pub fn set_font(&mut self, font: Option<Setting>) {
-        self.font = font;
+        self.scene.set_font(font);
     }
 
     /// The font the panel is set in, if it is set in one.
     pub fn font(&self) -> Option<&Setting> {
-        self.font.as_ref()
+        self.scene.font()
     }
 
     /// How long the panel's shapes keep changing.

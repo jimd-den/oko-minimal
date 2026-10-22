@@ -34,7 +34,6 @@ pub use error::ParseError;
 use super::binding::Action;
 use super::panel::{Flag, Panel, PanelError};
 use super::scene::{Condition, Scene};
-use super::typeface::Setting;
 use directive::Addition;
 
 /// A document larger than this is a mistake, not a panel. Four thousand
@@ -45,7 +44,6 @@ pub fn parse(text: &str) -> Result<Panel, Vec<ParseError>> {
     let mut scene = Scene::new();
     let mut flags: Vec<Flag> = Vec::new();
     let mut bindings = Vec::new();
-    let mut font: Option<Setting> = None;
     let mut errors = Vec::new();
 
     // Where each flag was used, so that a refusal can name the line.
@@ -84,7 +82,7 @@ pub fn parse(text: &str) -> Result<Panel, Vec<ParseError>> {
                 }
             }
             Ok(Addition::Font(setting)) => {
-                font = Some(setting);
+                scene.set_font(Some(setting));
             }
             Ok(Addition::Binding(binding)) => {
                 if let Action::Set { flag, .. } = binding.action() {
@@ -101,10 +99,7 @@ pub fn parse(text: &str) -> Result<Panel, Vec<ParseError>> {
     }
 
     match Panel::new(scene, flags, bindings) {
-        Ok(mut panel) => {
-            panel.set_font(font);
-            Ok(panel)
-        }
+        Ok(panel) => Ok(panel),
         Err(problem) => {
             let PanelError::UndeclaredFlag { flag } = &problem;
             let line = uses
