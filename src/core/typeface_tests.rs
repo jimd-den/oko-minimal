@@ -1,7 +1,7 @@
 //! The real fonts, seen from the outside.
 
 mod tests {
-    use crate::core::typeface::Face;
+    use crate::core::typeface::{Face, Setting};
 
     #[test]
     fn the_program_carries_three_faces() {
@@ -55,6 +55,53 @@ mod tests {
         let plain = face.glyph('A', 16.0, None).expect("an A");
         let weighted = face.glyph('A', 16.0, Some(700)).expect("an A");
 
-        assert_eq!(plain.path, weighted.path);
+        assert_eq!(
+            plain, weighted,
+            "the face gives one glyph, whatever the weight"
+        );
+    }
+
+    #[test]
+    fn a_capital_height_is_a_fraction_of_the_em() {
+        for name in Face::names() {
+            let face = Face::by_name(name).expect("a face the program carries");
+
+            let ratio = face.cap_ratio(None);
+
+            assert!(
+                (0.5..=0.8).contains(&ratio),
+                "{name} has capitals {ratio} of its em"
+            );
+        }
+    }
+
+    #[test]
+    fn a_setting_names_a_face_the_program_carries() {
+        let setting = Setting::named("dejavu-mono", None).expect("a face the program carries");
+
+        assert_eq!(setting.face.name(), "dejavu-mono");
+    }
+
+    #[test]
+    fn a_setting_refuses_a_face_the_program_does_not_carry() {
+        let refused = Setting::named("comic-sans", None);
+
+        assert!(refused.is_err(), "a face that is not here is refused");
+    }
+
+    #[test]
+    fn two_settings_of_one_face_at_one_weight_are_equal() {
+        let plain = Setting::named("dejavu-mono", None).expect("a setting");
+        let same = Setting::named("dejavu-mono", None).expect("a setting");
+
+        assert_eq!(plain, same);
+    }
+
+    #[test]
+    fn two_settings_of_one_face_at_two_weights_are_not_equal() {
+        let light = Setting::named("inter", Some(400)).expect("a setting");
+        let bold = Setting::named("inter", Some(700)).expect("a setting");
+
+        assert_ne!(light, bold);
     }
 }
