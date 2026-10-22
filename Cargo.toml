@@ -18,3 +18,8 @@ path = "src/main.rs"
 # `libc` gives raw mode, a timed read and the window size; nothing else
 # in the boot path pulls anything in.
 libc = "0.2.191"
+
+# The reader for real font files (ADR 0011). Pure Rust, MIT or Apache-2.0.
+# It reads outlines, the character map, advances and a variable font's
+# deltas; it does not shape, hint or draw.
+skrifa = { version = "0.46.2", default-features = false, features = ["std"] }

@@ -11,6 +11,7 @@
 use super::super::binding::Binding;
 use super::super::panel::Flag;
 use super::super::scene::Element;
+use super::super::typeface::Setting;
 use super::fields::{self, Kind};
 use super::motion;
 use super::panel;
@@ -24,6 +25,8 @@ pub(crate) enum Addition {
     Flag(Flag),
     /// A key, bound to an action.
     Binding(Binding),
+    /// The font the panel is set in.
+    Font(Setting),
 }
 
 pub(crate) fn parse(source: &str) -> Result<Addition, String> {
@@ -31,6 +34,7 @@ pub(crate) fn parse(source: &str) -> Result<Addition, String> {
     let name = words.next().unwrap_or_default();
     match name {
         "flag" => Ok(Addition::Flag(panel::flag(&mut words)?)),
+        "font" => Ok(Addition::Font(panel::font(&mut words)?)),
         "on" => Ok(Addition::Binding(panel::binding(&mut words)?)),
         _ => {
             let Some(kind) = Kind::of(name) else {
