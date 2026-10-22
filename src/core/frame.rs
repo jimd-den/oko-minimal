@@ -104,6 +104,14 @@ impl Frame {
         }
     }
 
+    /// Empty the frame, filling it with the colour.
+    ///
+    /// A runtime that paints into the frame it had wants a clean frame
+    /// first, and a clear is a shape like any other.
+    pub fn clear(&mut self, colour: Rgba) {
+        self.fill(self.bounds(), colour);
+    }
+
     /// Paint `area`, clipped to the frame.
     pub fn fill(&mut self, area: Rect, color: Rgba) {
         let Some(clipped) = area.intersect(self.bounds()) else {
@@ -165,6 +173,17 @@ mod tests {
         assert_eq!(frame.color_at(Point::new(0, 1)), Some(Rgba::WHITE));
         assert_eq!(frame.color_at(Point::new(3, 1)), Some(Rgba::WHITE));
         assert_eq!(frame.color_at(Point::new(1, 2)), Some(Rgba::BLACK));
+    }
+
+    #[test]
+    fn clearing_a_frame_empties_it() {
+        let mut frame = Frame::new(2, 2).expect("a small frame");
+        frame.set(Point::new(0, 0), Rgba::WHITE);
+
+        frame.clear(Rgba::rgb(0, 0, 255));
+
+        assert_eq!(frame.color_at(Point::new(0, 0)), Some(Rgba::rgb(0, 0, 255)));
+        assert_eq!(frame.color_at(Point::new(1, 1)), Some(Rgba::rgb(0, 0, 255)));
     }
 
     #[test]

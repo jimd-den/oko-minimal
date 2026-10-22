@@ -7,6 +7,9 @@
 //! A key arrives, a binding fires, a flag changes, and the shapes whose
 //! condition holds are what the panel draws. A panel can do nothing else: it
 //! may not run a command, read a file, or change anything outside itself.
+//!
+//! The flags are their own part, in `flags`: the panel holds them and asks
+//! them, and does not know how a flag is found or turned on.
 
 use std::fmt;
 
@@ -15,31 +18,15 @@ use super::event::Key;
 use super::scene::{Condition, Element, Scene};
 use super::typeface::Setting;
 
-/// A named flag and its value.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Flag {
-    name: String,
-    value: bool,
-}
+mod flags;
+#[cfg(test)]
+mod font_tests;
+#[cfg(test)]
+mod tests;
 
-impl Flag {
-    pub fn new(name: impl Into<String>, value: bool) -> Self {
-        Self {
-            name: name.into(),
-            value,
-        }
-    }
+pub use flags::Flag;
 
-    /// The name the flag is known by.
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// The value the flag holds.
-    pub fn value(&self) -> bool {
-        self.value
-    }
-}
+use flags::{declares, holds, value_of};
 
 /// What a key did to the panel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -75,8 +62,6 @@ pub struct Panel {
     scene: Scene,
     flags: Vec<Flag>,
     bindings: Vec<Binding>,
-    /// The font the panel is set in, if it is set in one.
-    font: Option<Setting>,
 }
 
 impl Panel {
@@ -103,7 +88,6 @@ impl Panel {
             scene,
             flags,
             bindings,
-            font: None,
         })
     }
 
@@ -113,13 +97,16 @@ impl Panel {
     /// changes its font changes one thing, and the shapes it draws are the
     /// shapes it had. The letterforms are looked up again when the text is
     /// drawn.
+    ///
+    /// The font is the scene's, because the scene is what the raster walks
+    /// (ADR 0014).
     pub fn set_font(&mut self, font: Option<Setting>) {
-        self.font = font;
+        self.scene.set_font(font);
     }
 
     /// The font the panel is set in, if it is set in one.
     pub fn font(&self) -> Option<&Setting> {
-        self.font.as_ref()
+        self.scene.font()
     }
 
     /// How long the panel's shapes keep changing.
@@ -145,16 +132,13 @@ impl Panel {
     /// at the moment asked for.
     pub fn scene(&self, now: u64) -> Scene {
         self.scene
-            .satisfying(|condition| self.holds(condition))
+            .satisfying(|condition| holds(&self.flags, condition))
             .at(now)
     }
 
     /// The value of the named flag, if it is a flag of this panel.
     pub fn flag(&self, name: &str) -> Option<bool> {
-        self.flags
-            .iter()
-            .find(|flag| flag.name == name)
-            .map(|flag| flag.value)
+        value_of(&self.flags, name)
     }
 
     /// The flags the panel holds.
@@ -179,7 +163,13 @@ impl Panel {
         };
         match action {
             Action::Quit => Outcome::Quit,
-            Action::Set { flag, value } => self.set(&flag, value),
+            Action::Set { flag, value } => {
+                if flags::set(&mut self.flags, &flag, value) {
+                    Outcome::Changed
+                } else {
+                    Outcome::Unchanged
+                }
+            }
         }
     }
 
@@ -190,29 +180,4 @@ impl Panel {
             .find(|binding| binding.key() == key)
             .map(|binding| binding.action().clone())
     }
-
-    /// The flag takes the value, and the panel says whether that changed it.
-    fn set(&mut self, name: &str, value: bool) -> Outcome {
-        let Some(flag) = self.flags.iter_mut().find(|flag| flag.name == name) else {
-            return Outcome::Unchanged;
-        };
-        if flag.value == value {
-            return Outcome::Unchanged;
-        }
-        flag.value = value;
-        Outcome::Changed
-    }
-
-    /// Whether the condition holds in this panel.
-    fn holds(&self, condition: &Condition) -> bool {
-        match condition {
-            Condition::Always => true,
-            Condition::Flag(name) => self.flag(name) == Some(true),
-        }
-    }
-}
-
-/// Whether the flags declare the named one.
-fn declares(flags: &[Flag], name: &str) -> bool {
-    flags.iter().any(|flag| flag.name == name)
 }

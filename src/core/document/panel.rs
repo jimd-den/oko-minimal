@@ -44,7 +44,9 @@ pub(crate) fn flag(words: &mut Words) -> Result<Flag, String> {
 /// The font belongs to the panel, so a document that changes it changes one
 /// thing: the shapes it draws are the shapes it had.
 pub(crate) fn font(words: &mut Words) -> Result<Setting, String> {
-    let name = words.value().ok_or("expected the name of a font")?;
+    let name = words
+        .label()
+        .map_err(|problem| format!("{problem}; a font is named in double quotes"))?;
     let mut weight = None;
     while let Some(word) = words.value() {
         let (tag, value) = word
@@ -62,7 +64,7 @@ pub(crate) fn font(words: &mut Words) -> Result<Setting, String> {
         weight = Some(value);
     }
     words.end()?;
-    Setting::named(name, weight)
+    Setting::named(&name, weight)
 }
 
 /// A binding, read from the words after `on`.
