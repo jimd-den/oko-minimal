@@ -12,7 +12,10 @@ use crate::core::paint;
 use crate::core::path::{Path, Segment};
 
 /// The grid a glyph is drawn on: four times finer than the panel's.
-const GRID: i32 = 4;
+///
+/// The count comes from the module's own grid, so the outline and the
+/// drawing are on the same grid by construction.
+const GRID: i32 = super::GRID as i32;
 
 /// Nothing is here: the frame a glyph is drawn on starts empty.
 const EMPTY: Rgba = Rgba::new(0, 0, 0, 0);
