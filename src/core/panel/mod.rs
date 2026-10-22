@@ -7,6 +7,9 @@
 //! A key arrives, a binding fires, a flag changes, and the shapes whose
 //! condition holds are what the panel draws. A panel can do nothing else: it
 //! may not run a command, read a file, or change anything outside itself.
+//!
+//! The flags are their own part, in `flags`: the panel holds them and asks
+//! them, and does not know how a flag is found or turned on.
 
 use std::fmt;
 
@@ -15,48 +18,28 @@ use super::event::Key;
 use super::scene::{Condition, Element, Scene};
 use super::typeface::Setting;
 
-/// A named flag and its value.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Flag {
-    name: String,
-    value: bool,
-}
+mod flags;
+#[cfg(test)]
+mod font_tests;
+mod keys;
+#[cfg(test)]
+mod keys_tests;
+#[cfg(test)]
+mod tests;
 
-impl Flag {
-    pub fn new(name: impl Into<String>, value: bool) -> Self {
-        Self {
-            name: name.into(),
-            value,
-        }
-    }
+pub use flags::Flag;
+pub use keys::Outcome;
 
-    /// The name the flag is known by.
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// The value the flag holds.
-    pub fn value(&self) -> bool {
-        self.value
-    }
-}
-
-/// What a key did to the panel.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Outcome {
-    /// Nothing changed: the panel is as it was and needs no repaint.
-    Unchanged,
-    /// A flag changed: the panel is different and the runtime should repaint.
-    Changed,
-    /// The binding asked the program to end.
-    Quit,
-}
+use flags::{declares, holds, value_of};
+use keys::action_for;
 
 /// Why a panel refused to be built.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PanelError {
     /// A binding or a condition named a flag that was not declared.
     UndeclaredFlag { flag: String },
+    /// Two bindings were for the same key, and the second is shadowed.
+    DuplicateKey { key: Key },
 }
 
 impl fmt::Display for PanelError {
@@ -64,6 +47,9 @@ impl fmt::Display for PanelError {
         match self {
             PanelError::UndeclaredFlag { flag } => {
                 write!(f, "the flag `{flag}` is not declared")
+            }
+            PanelError::DuplicateKey { key } => {
+                write!(f, "the key `{}` is bound twice", keys::name_of(*key))
             }
         }
     }
@@ -75,8 +61,6 @@ pub struct Panel {
     scene: Scene,
     flags: Vec<Flag>,
     bindings: Vec<Binding>,
-    /// The font the panel is set in, if it is set in one.
-    font: Option<Setting>,
 }
 
 impl Panel {
@@ -92,6 +76,9 @@ impl Panel {
                 return Err(PanelError::UndeclaredFlag { flag: flag.clone() });
             }
         }
+        if let Some(key) = keys::shadowed(&bindings) {
+            return Err(PanelError::DuplicateKey { key });
+        }
         for element in scene.elements() {
             if let Condition::Flag(name) = &element.condition
                 && !declares(&flags, name)
@@ -103,7 +90,6 @@ impl Panel {
             scene,
             flags,
             bindings,
-            font: None,
         })
     }
 
@@ -113,13 +99,16 @@ impl Panel {
     /// changes its font changes one thing, and the shapes it draws are the
     /// shapes it had. The letterforms are looked up again when the text is
     /// drawn.
+    ///
+    /// The font is the scene's, because the scene is what the raster walks
+    /// (ADR 0014).
     pub fn set_font(&mut self, font: Option<Setting>) {
-        self.font = font;
+        self.scene.set_font(font);
     }
 
     /// The font the panel is set in, if it is set in one.
     pub fn font(&self) -> Option<&Setting> {
-        self.font.as_ref()
+        self.scene.font()
     }
 
     /// How long the panel's shapes keep changing.
@@ -145,16 +134,13 @@ impl Panel {
     /// at the moment asked for.
     pub fn scene(&self, now: u64) -> Scene {
         self.scene
-            .satisfying(|condition| self.holds(condition))
+            .satisfying(|condition| holds(&self.flags, condition))
             .at(now)
     }
 
     /// The value of the named flag, if it is a flag of this panel.
     pub fn flag(&self, name: &str) -> Option<bool> {
-        self.flags
-            .iter()
-            .find(|flag| flag.name == name)
-            .map(|flag| flag.value)
+        value_of(&self.flags, name)
     }
 
     /// The flags the panel holds.
@@ -174,45 +160,18 @@ impl Panel {
     /// should end. A bool would have to carry the last one in its
     /// neighbourhood.
     pub fn key(&mut self, key: Key) -> Outcome {
-        let Some(action) = self.action_for(key) else {
+        let Some(action) = action_for(&self.bindings, key) else {
             return Outcome::Unchanged;
         };
         match action {
             Action::Quit => Outcome::Quit,
-            Action::Set { flag, value } => self.set(&flag, value),
+            Action::Set { flag, value } => {
+                if flags::set(&mut self.flags, &flag, value) {
+                    Outcome::Changed
+                } else {
+                    Outcome::Unchanged
+                }
+            }
         }
     }
-
-    /// What the key does, if it is bound.
-    fn action_for(&self, key: Key) -> Option<Action> {
-        self.bindings
-            .iter()
-            .find(|binding| binding.key() == key)
-            .map(|binding| binding.action().clone())
-    }
-
-    /// The flag takes the value, and the panel says whether that changed it.
-    fn set(&mut self, name: &str, value: bool) -> Outcome {
-        let Some(flag) = self.flags.iter_mut().find(|flag| flag.name == name) else {
-            return Outcome::Unchanged;
-        };
-        if flag.value == value {
-            return Outcome::Unchanged;
-        }
-        flag.value = value;
-        Outcome::Changed
-    }
-
-    /// Whether the condition holds in this panel.
-    fn holds(&self, condition: &Condition) -> bool {
-        match condition {
-            Condition::Always => true,
-            Condition::Flag(name) => self.flag(name) == Some(true),
-        }
-    }
-}
-
-/// Whether the flags declare the named one.
-fn declares(flags: &[Flag], name: &str) -> bool {
-    flags.iter().any(|flag| flag.name == name)
 }

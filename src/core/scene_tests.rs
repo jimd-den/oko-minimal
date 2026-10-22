@@ -6,6 +6,12 @@ mod tests {
     use crate::core::motion::{Leg, Motion};
     use crate::core::scene::{Condition, Element, Scene};
     use crate::core::shape::Shape;
+    use crate::core::typeface::Setting;
+
+    /// A face the program carries, in the setting a panel may be set in.
+    fn inter() -> Setting {
+        Setting::named("inter", None).expect("a face the program carries")
+    }
 
     fn element(motion: Motion) -> Element {
         Element::new(
@@ -105,5 +111,35 @@ mod tests {
             scene.at(0).elements()[0].condition,
             Condition::Flag("shown".to_string())
         );
+    }
+
+    #[test]
+    fn a_scene_carries_the_font_it_is_drawn_in() {
+        let mut scene = Scene::new();
+
+        scene.set_font(Some(inter()));
+
+        assert_eq!(scene.font().map(|font| font.face.name()), Some("inter"));
+    }
+
+    #[test]
+    fn the_scene_at_a_moment_keeps_the_font() {
+        let mut scene = Scene::new();
+        scene.set_font(Some(inter()));
+
+        assert_eq!(
+            scene.at(500).font().map(|font| font.face.name()),
+            Some("inter")
+        );
+    }
+
+    #[test]
+    fn the_scene_of_the_elements_whose_condition_holds_keeps_the_font() {
+        let mut scene = Scene::new();
+        scene.set_font(Some(inter()));
+
+        let kept = scene.satisfying(|condition| matches!(condition, Condition::Always));
+
+        assert_eq!(kept.font().map(|font| font.face.name()), Some("inter"));
     }
 }

@@ -1,34 +1,15 @@
-//! Laying out bitmap text into a frame.
+//! Drawing a label in the built-in font.
 //!
-//! Text is drawn with the rectangle primitive, one glyph at a time, left to
-//! right. Each glyph carries its own width, so the pen moves by the width of
-//! the letter that was drawn and not by a fixed pitch. There is no shaping,
-//! no kerning and no fallback font: a character the built-in font does not
-//! have is a document error, caught at parse time, so the renderer never has
-//! to guess.
-//!
-//! The pen is 64-bit and every write is clipped. A label that starts off the
-//! frame, or runs past its right edge, paints the part that is visible and
-//! nothing else.
+//! The built-in font is five columns by seven rows, one bit per pixel, and
+//! it is drawn with the rectangle primitive: a letter is a set of blocks,
+//! and a block is a rectangle. The pen moves by the width of the letter it
+//! drew, so a word is as wide as its letters and not as wide as the widest
+//! letter times the number of letters.
 
-use super::font;
-use super::frame::Frame;
-use super::geom::{Point, Rgba};
-
-/// A text to draw: what it says, how big, how far apart its letters are,
-/// and in what colour.
-///
-/// The spacing is the space the design put between the letters. The font's
-/// own advance is the floor; the spacing is what the design asked for on
-/// top of it (ADR 0010).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Text<'a> {
-    pub at: Point,
-    pub text: &'a str,
-    pub scale: u8,
-    pub spacing: i64,
-    pub colour: Rgba,
-}
+use super::Text;
+use crate::core::font;
+use crate::core::frame::Frame;
+use crate::core::geom::{Point, Rgba};
 
 /// The width of a text, in pixels: the width the design would give it.
 ///
@@ -51,6 +32,7 @@ pub fn width(text: &str, scale: u8, spacing: i64) -> i64 {
     wide.saturating_sub(1)
 }
 
+/// Paint the text in the built-in font.
 pub fn paint(frame: &mut Frame, text: &Text) {
     let Text {
         at,
@@ -86,6 +68,7 @@ pub fn paint(frame: &mut Frame, text: &Text) {
     }
 }
 
+/// A block of the letter: a square of pixels, the font's own pixel.
 fn block(frame: &mut Frame, x: i64, y: i64, size: i64, colour: Rgba) {
     for dy in 0..size {
         for dx in 0..size {
@@ -94,6 +77,7 @@ fn block(frame: &mut Frame, x: i64, y: i64, size: i64, colour: Rgba) {
     }
 }
 
+/// Put one pixel, if it is on the frame.
 fn put(frame: &mut Frame, x: i64, y: i64, colour: Rgba) {
     if x < 0 || y < 0 {
         return;

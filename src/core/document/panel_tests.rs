@@ -131,4 +131,31 @@ mod tests {
             error[0]
         );
     }
+
+    #[test]
+    fn a_document_may_name_a_face() {
+        let panel = parse("font \"inter\"").expect("a face the program carries");
+
+        assert_eq!(panel.font().map(|font| font.face.name()), Some("inter"));
+    }
+
+    #[test]
+    fn a_face_the_program_does_not_carry_is_refused_by_name() {
+        let error = parse("font \"nonesuch\"").expect_err("a face that is not carried");
+
+        assert!(error[0].problem.contains("nonesuch"), "{:?}", error[0]);
+        assert!(
+            !error[0].problem.contains('"'),
+            "the refusal names the face itself: {:?}",
+            error[0]
+        );
+    }
+
+    #[test]
+    fn two_bindings_for_one_key_are_refused() {
+        let error = parse("on key enter quit\non key enter quit").expect_err("a key bound twice");
+
+        assert_eq!(error[0].line, 2);
+        assert!(error[0].problem.contains("enter"), "{:?}", error[0]);
+    }
 }
