@@ -21,23 +21,15 @@ use super::typeface::Setting;
 mod flags;
 #[cfg(test)]
 mod font_tests;
+mod keys;
 #[cfg(test)]
 mod tests;
 
 pub use flags::Flag;
+pub use keys::Outcome;
 
 use flags::{declares, holds, value_of};
-
-/// What a key did to the panel.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Outcome {
-    /// Nothing changed: the panel is as it was and needs no repaint.
-    Unchanged,
-    /// A flag changed: the panel is different and the runtime should repaint.
-    Changed,
-    /// The binding asked the program to end.
-    Quit,
-}
+use keys::action_for;
 
 /// Why a panel refused to be built.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -158,7 +150,7 @@ impl Panel {
     /// should end. A bool would have to carry the last one in its
     /// neighbourhood.
     pub fn key(&mut self, key: Key) -> Outcome {
-        let Some(action) = self.action_for(key) else {
+        let Some(action) = action_for(&self.bindings, key) else {
             return Outcome::Unchanged;
         };
         match action {
@@ -171,13 +163,5 @@ impl Panel {
                 }
             }
         }
-    }
-
-    /// What the key does, if it is bound.
-    fn action_for(&self, key: Key) -> Option<Action> {
-        self.bindings
-            .iter()
-            .find(|binding| binding.key() == key)
-            .map(|binding| binding.action().clone())
     }
 }
