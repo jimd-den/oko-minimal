@@ -31,6 +31,16 @@ fn painting_into_a_used_frame_gives_the_same_picture_as_a_new_one() {
 }
 
 #[test]
+fn the_adapter_paints_the_text_in_the_font_the_scene_carries() {
+    let picture = scene("font \"inter\"\ntext 0 0 \"A\" 2 #ffffff");
+    let mut frame = fresh(&picture, 8, 8);
+
+    painter::paint_into(&picture, &mut frame);
+
+    assert_eq!(frame, fresh(&picture, 8, 8));
+}
+
+#[test]
 fn a_scene_without_a_clear_wipes_the_old_picture() {
     let picture = scene("rect 0 0 2 2 #ff0000");
     let mut frame = fresh(&picture, 4, 2);
