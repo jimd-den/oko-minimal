@@ -98,6 +98,47 @@ labels, scales, and the count of operations — so what it writes is what the
 parser accepts. One element can become many directives, so the writer counts
 them and refuses the panel that would need more than the format allows.
 
+## The panel's font
+
+A panel is written in one face, and the face belongs to the panel rather than
+to its shapes. A shape says what it draws; the panel says in what face. That
+separation is what makes the face changeable at runtime: replacing the face
+changes the letterforms and nothing else - no shape is rebuilt, no label is
+measured again, no position is checked again.
+
+So the size of a label cannot depend on the face, and it does not. The number
+in a text directive is always the built-in font's scale, whatever the font is.
+A named face is drawn to the built-in font's capital height at that scale, and
+the two faces are set to the same size in the only way the eye compares
+typefaces. The baseline does not move either: a named face's text stands where
+the built-in font puts it.
+
+Real fonts are carried in the binary, with their licences beside them, and
+read through a borrowed reader: the character map, the outline, the advances
+and a variable font's axes come from a font library that maintains the
+specification, and the drawing stays here - an outline arrives as the same
+path type the panel's own `path` directive uses, and the core's path painter
+fills it. Shaping is not done: a run of text is a sequence of glyphs placed at
+each other's advances, with no kerning and no ligatures, and a character the
+face does not have is a hole that is named.
+
+## Only what changed is sent
+
+A panel that animates is redrawn sixty times a second, and a terminal is a
+narrow pipe to a slow reader. The presenter therefore does not send the
+screen; it sends the difference. It keeps the cells it last showed, compares
+them with the frame it is about to show, and writes the cells that differ: one
+cursor move per run, and nothing at all when nothing changed. The frame itself
+is kept and painted into again rather than allocated afresh.
+
+The question of where that comparison belongs was answered deliberately. The
+scene could instead report which of its shapes moved, but a shape with legs
+has no bounds until it is sampled at a moment, and the scene would need a
+second notion of time to say what changed between two of them. The presenter
+already holds both frames; the comparison is one pass over the cells and no
+new concept. The core is untouched by the question, and stays a pure function
+of a moment and a size.
+
 ## The line is the design
 
 No source file exceeds two hundred lines, and most functions are a dozen lines
@@ -115,17 +156,18 @@ The lint is green or it is not; the budget is a script, not a matter of taste.
 
 - `core`: geometry, frames, scenes, Cohen–Sutherland clipping, Bresenham lines,
   curves and arcs, the five-by-seven bitmap font and the text it draws, the
-  document parser, the panel with its flags and bindings, the lease, focus, and
-  the session reducer.
+  reader for real fonts and the drawing of their glyphs, the document parser,
+  the panel with its flags and bindings, the lease, focus, and the session
+  reducer.
 - `adapters`: a terminal encoder (two square pixels per cell, 24-bit colour), a
-  painter, a runtime that is a loop with no device in it, and the bounded SVG
-  translator, which reads labels as well as shapes and reports the shapes it
-  could not draw.
+  painter, a runtime that is a loop with no device in it, a presenter that
+  sends only the cells that changed, and the bounded SVG translator, which
+  reads labels as well as shapes and reports the shapes it could not draw.
 - `oko panel.oko` presents a panel and reloads it when the file changes;
   `oko panel.oko --once` paints one frame and stops. `oko-svg panel.svg` writes
   the document to standard output and the report to standard error. Examples for
   all of them.
-- 323 tests. The gate is `make check`: line budget, format, types, clippy, tests.
+- 354 tests. The gate is `make check`: line budget, format, types, clippy, tests.
 
 ## What is deliberately absent
 
