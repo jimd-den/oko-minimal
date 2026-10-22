@@ -41,3 +41,6 @@ pub mod text;
 #[cfg(test)]
 mod text_tests;
 pub mod timeline;
+pub mod typeface;
+#[cfg(test)]
+mod typeface_tests;
