@@ -23,6 +23,8 @@ mod flags;
 mod font_tests;
 mod keys;
 #[cfg(test)]
+mod keys_tests;
+#[cfg(test)]
 mod tests;
 
 pub use flags::Flag;
@@ -36,6 +38,8 @@ use keys::action_for;
 pub enum PanelError {
     /// A binding or a condition named a flag that was not declared.
     UndeclaredFlag { flag: String },
+    /// Two bindings were for the same key, and the second is shadowed.
+    DuplicateKey { key: Key },
 }
 
 impl fmt::Display for PanelError {
@@ -43,6 +47,9 @@ impl fmt::Display for PanelError {
         match self {
             PanelError::UndeclaredFlag { flag } => {
                 write!(f, "the flag `{flag}` is not declared")
+            }
+            PanelError::DuplicateKey { key } => {
+                write!(f, "the key `{}` is bound twice", keys::name_of(*key))
             }
         }
     }
@@ -68,6 +75,9 @@ impl Panel {
             {
                 return Err(PanelError::UndeclaredFlag { flag: flag.clone() });
             }
+        }
+        if let Some(key) = keys::shadowed(&bindings) {
+            return Err(PanelError::DuplicateKey { key });
         }
         for element in scene.elements() {
             if let Condition::Flag(name) = &element.condition

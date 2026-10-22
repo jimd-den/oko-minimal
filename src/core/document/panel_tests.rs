@@ -150,4 +150,12 @@ mod tests {
             error[0]
         );
     }
+
+    #[test]
+    fn two_bindings_for_one_key_are_refused() {
+        let error = parse("on key enter quit\non key enter quit").expect_err("a key bound twice");
+
+        assert_eq!(error[0].line, 2);
+        assert!(error[0].problem.contains("enter"), "{:?}", error[0]);
+    }
 }
