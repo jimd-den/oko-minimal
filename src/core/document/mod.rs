@@ -33,8 +33,8 @@ pub use error::ParseError;
 
 use super::binding::Action;
 use super::panel::{Flag, Panel, PanelError};
-use super::typeface::Setting;
 use super::scene::{Condition, Scene};
+use super::typeface::Setting;
 use directive::Addition;
 
 /// A document larger than this is a mistake, not a panel. Four thousand

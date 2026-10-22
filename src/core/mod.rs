@@ -23,8 +23,6 @@ pub mod lease;
 pub mod motion;
 pub mod paint;
 pub mod panel;
-#[cfg(test)]
-mod panel_tests;
 pub mod path;
 pub mod raster;
 #[cfg(test)]
