@@ -31,6 +31,12 @@ pub fn at(motion: &Motion, start: &Shape, now: u64) -> Shape {
         return start.clone();
     }
     let mut elapsed = now - motion.delay();
+    if motion.is_looping() {
+        let cycle: u64 = motion.legs().iter().map(|leg| leg.over()).sum();
+        if cycle > 0 {
+            elapsed %= cycle;
+        }
+    }
     let mut from = start.clone();
     for leg in motion.legs() {
         if elapsed < leg.over() {
@@ -46,6 +52,9 @@ pub fn at(motion: &Motion, start: &Shape, now: u64) -> Shape {
 /// Whether these legs may follow `start`.
 pub fn check(motion: &Motion, start: &Shape) -> Result<(), String> {
     if motion.legs().is_empty() {
+        if motion.is_looping() {
+            return Err("a motion with no legs cannot loop".to_string());
+        }
         return Ok(());
     }
     if matches!(start, Shape::Clear(_)) {

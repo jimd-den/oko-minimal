@@ -160,4 +160,11 @@ impl Scene {
             .max()
             .unwrap_or(0)
     }
+
+    /// Whether any element in the scene repeats its legs forever.
+    pub fn is_looping(&self) -> bool {
+        self.elements
+            .iter()
+            .any(|element| element.motion.is_looping())
+    }
 }

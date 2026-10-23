@@ -14,7 +14,7 @@
 
 use super::super::motion::{Leg, Motion};
 use super::fields::{self, Kind};
-use super::words::{AFTER, OVER, TO, Words};
+use super::words::{AFTER, LOOP, OVER, TO, Words};
 
 /// A duration, read from the next words: a number and a unit.
 ///
@@ -69,6 +69,10 @@ pub(crate) fn read(words: &mut Words, kind: Kind) -> Result<Motion, String> {
     }
     if words.is(0, OVER) {
         return Err("`over` needs a `to` to say what the shape becomes".to_string());
+    }
+    if words.is(0, LOOP) {
+        words.next();
+        return Ok(Motion::looping(delay, legs));
     }
 
     Ok(Motion::new(delay, legs))

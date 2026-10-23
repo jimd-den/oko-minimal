@@ -19,6 +19,8 @@ pub(crate) const AFTER: &str = "after";
 pub(crate) const TO: &str = "to";
 /// The word that states how long a leg takes.
 pub(crate) const OVER: &str = "over";
+/// The word that makes a motion repeat its legs forever.
+pub(crate) const LOOP: &str = "loop";
 /// The word that states the flag a shape is drawn under.
 pub(crate) const WHEN: &str = "when";
 /// The word that states the space between the letters of a text.
@@ -152,7 +154,7 @@ impl<'a> Words<'a> {
 
 /// Whether a word is one the document reserves for its grammar.
 pub(crate) fn is_keyword(word: &str) -> bool {
-    matches!(word, AFTER | TO | OVER | WHEN | SPACING)
+    matches!(word, AFTER | TO | OVER | LOOP | WHEN | SPACING)
 }
 
 /// The words of a line, a quoted run being one word.

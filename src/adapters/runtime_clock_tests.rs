@@ -75,3 +75,24 @@ fn a_tick_writes_into_the_frame_buffer_that_is_already_there() {
         "one buffer, however many ticks"
     );
 }
+
+#[test]
+fn a_looping_panel_never_settles() {
+    let mut runtime = runtime(8, 4);
+    runtime
+        .document(
+            "clear #000000\nrect 0 0 4 4 #ff0000 to 4 0 4 4 #ff0000 over 1s to 0 0 4 4 #ff0000 over 1s loop",
+        )
+        .expect("a valid looping document");
+
+    assert!(runtime.tick(2000));
+    assert!(
+        runtime.tick(2500),
+        "a looping panel keeps moving past its first cycle"
+    );
+    let frame = runtime.frame().expect("a frame");
+    assert_eq!(
+        frame.color_at(Point::new(2, 0)),
+        Some(crate::core::geom::Rgba::rgb(255, 0, 0))
+    );
+}

@@ -42,6 +42,7 @@ impl Leg {
 pub struct Motion {
     delay: u64,
     legs: Vec<Leg>,
+    looping: bool,
 }
 
 impl Motion {
@@ -52,7 +53,20 @@ impl Motion {
 
     /// A motion that waits, then makes each leg in turn.
     pub fn new(delay: u64, legs: Vec<Leg>) -> Self {
-        Self { delay, legs }
+        Self {
+            delay,
+            legs,
+            looping: false,
+        }
+    }
+
+    /// A motion that waits, then repeats its legs forever.
+    pub fn looping(delay: u64, legs: Vec<Leg>) -> Self {
+        Self {
+            delay,
+            legs,
+            looping: true,
+        }
     }
 
     /// How long the shape waits before its first leg, in milliseconds.
@@ -63,5 +77,10 @@ impl Motion {
     /// The legs, in the order they happen.
     pub fn legs(&self) -> &[Leg] {
         &self.legs
+    }
+
+    /// Whether the motion repeats its legs after they end.
+    pub fn is_looping(&self) -> bool {
+        self.looping
     }
 }

@@ -119,6 +119,13 @@ impl Panel {
         self.scene.duration()
     }
 
+    /// Whether any active element in the panel repeats its legs forever.
+    pub fn is_looping(&self) -> bool {
+        self.scene
+            .satisfying(|condition| holds(&self.flags, condition))
+            .is_looping()
+    }
+
     /// The elements the panel holds, with their motions and their conditions.
     ///
     /// The scene a panel draws is the elements it holds, filtered by the

@@ -145,4 +145,21 @@ mod tests {
         );
         assert_eq!(rest.color_at(Point::new(60, 4)), Some(Rgba::rgb(255, 0, 0)));
     }
+
+    #[test]
+    fn a_shape_may_loop_its_legs() {
+        let motion = motion_of(
+            "rect 4 4 4 4 #ff9d00 to 60 4 4 4 #ff0000 over 1s to 4 4 4 4 #ff9d00 over 1s loop",
+        );
+
+        assert!(motion.is_looping());
+        assert_eq!(motion.legs().len(), 2);
+    }
+
+    #[test]
+    fn a_loop_without_legs_is_refused() {
+        let error = error_of("rect 4 4 4 4 #ff9d00 loop");
+
+        assert!(error.contains("loop"), "{error}");
+    }
 }

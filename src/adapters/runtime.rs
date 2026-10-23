@@ -120,7 +120,7 @@ impl Runtime {
             return false;
         }
         self.at = Some(now);
-        if now >= panel.duration() {
+        if !panel.is_looping() && now >= panel.duration() {
             self.settled = true;
         }
         self.render_at(now)

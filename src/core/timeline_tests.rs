@@ -108,3 +108,22 @@ fn the_legs_are_checked_against_each_other() {
 
     assert!(refusal.contains("text"), "{refusal}");
 }
+
+#[test]
+fn a_looping_motion_repeats_its_legs_after_they_end() {
+    let motion = Motion::looping(500, vec![leg(rect_at(10), 1_000), leg(rect_at(0), 1_000)]);
+
+    assert_eq!(x_of(&at(&motion, &rect_at(0), 400)), 0);
+    assert_eq!(x_of(&at(&motion, &rect_at(0), 1_000)), 5);
+    assert_eq!(x_of(&at(&motion, &rect_at(0), 2_000)), 5);
+    assert_eq!(x_of(&at(&motion, &rect_at(0), 3_000)), 5);
+}
+
+#[test]
+fn a_motion_without_legs_may_not_loop() {
+    let motion = Motion::looping(0, Vec::new());
+
+    let refusal = check(&motion, &rect_at(0)).expect_err("no legs to loop");
+
+    assert!(refusal.contains("loop"), "{refusal}");
+}
