@@ -85,6 +85,7 @@ fn a_looping_panel_never_settles() {
         )
         .expect("a valid looping document");
 
+    assert!(runtime.tick(1000));
     assert!(runtime.tick(2000));
     assert!(
         runtime.tick(2500),
