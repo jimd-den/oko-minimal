@@ -60,3 +60,18 @@ fn a_named_face_stands_on_the_built_in_font_s_baseline() {
 
     assert_eq!(named.last(), builtin.last(), "both stand on the same row");
 }
+
+#[test]
+fn painting_a_label_again_reuses_the_stamps_of_the_first_painting() {
+    use crate::core::typeface::cache;
+
+    cache::clear();
+    let setting = inter();
+
+    let _ = painted(Some(&setting), "OKO", 2);
+    let kept = cache::len();
+    assert!(kept > 0, "the first painting filled the cache");
+
+    let _ = painted(Some(&setting), "OKO", 2);
+    assert_eq!(cache::len(), kept, "the second painting added nothing");
+}
