@@ -47,9 +47,10 @@ time.**
   unit, `ms` or `s`. A shape may carry a delay before its first leg.
   `to` is followed by the shape's own fields, without its keyword: for a
   rectangle `x y w h colour`, for a line `x1 y1 x2 y2 colour`, for a text
-  `x y "label" scale colour`, for a path its segments and its paints. The
-  target is the same kind of shape as the one it follows; a target of
-  another kind is refused, and named.
+  `x y "label" scale colour`, for a path its segments and its paints. A
+  clear has no target form and cannot carry motion legs. The target is the
+  same kind of shape as the one it follows; a target of another kind is
+  refused, and named.
 - What interpolates is what a tween can move: a position, a size, a colour.
   A text's label does not interpolate - a text that becomes a different text
   is refused, and named. A path may move to a path of the same structure, and
