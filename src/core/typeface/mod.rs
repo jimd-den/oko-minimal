@@ -15,18 +15,21 @@
 //! proportional face and a variable one.
 //!
 //! The pieces: `face` reads a font file, `pen` writes an outline into the
-//! core's path, `setting` names a face for a panel, and `draw` puts a glyph
-//! on a frame.
+//! core's path, `setting` names a face for a panel, `stamp` rasterises a
+//! glyph once, and `cache` keeps the stamps for later frames.
 
-pub mod draw;
+pub mod cache;
 mod face;
 mod pen;
 mod setting;
+pub mod stamp;
 
 #[cfg(test)]
-mod draw_tests;
+mod cache_tests;
 #[cfg(test)]
 mod pen_tests;
+#[cfg(test)]
+mod stamp_tests;
 
 pub use face::{Face, Glyph};
 pub use setting::Setting;
