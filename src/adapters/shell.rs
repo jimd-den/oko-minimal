@@ -39,12 +39,19 @@ const HIDE: &str = "\x1b[?25l";
 const SHOW: &str = "\x1b[?25h";
 
 /// Run the console on a document, until the screen is handed back.
-pub fn run(path: &Path) -> io::Result<()> {
-    let mut terminal = Terminal::stdin()?;
+///
+/// The writer and the terminal arrive as arguments, so a test can hand the
+/// function a buffer and a terminal and observe the order in which the
+/// first frame and the alternate-screen sequence are written. Production
+/// callers (see `main.rs`) create them from the process's standard streams.
+pub fn run(
+    path: &Path,
+    mut out: &mut (impl Write + ?Sized),
+    terminal: &mut Terminal,
+) -> io::Result<()> {
     let (columns, rows) = terminal.size()?;
     let mut runtime = Runtime::new(columns, rows.saturating_mul(2));
     let mut decoder = Decoder::new();
-    let mut out = io::stdout();
     // The cells the terminal is showing: what the damage is measured from.
     let mut screen: Option<Screen> = None;
 
