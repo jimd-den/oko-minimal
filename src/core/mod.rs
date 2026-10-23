@@ -35,6 +35,8 @@ mod shape_tests;
 pub mod syntax;
 pub mod text;
 pub mod timeline;
+#[cfg(test)]
+mod timeline_tests;
 pub mod typeface;
 #[cfg(test)]
 mod typeface_tests;
