@@ -50,16 +50,27 @@ pub fn run(path: &Path) -> io::Result<()> {
 
     let mut seen = stamp(path);
     let mut origin = Instant::now();
-    if let Some(text) = read(path) {
+    let loaded = if let Some(text) = read(path) {
         load(&mut runtime, &text);
         origin = Instant::now();
-        present(&mut out, &mut screen, &runtime)?;
-    }
+        true
+    } else {
+        false
+    };
 
     write!(out, "{ALTERNATE}{HIDE}")?;
     out.flush()?;
     terminal.set_raw()?;
     let _ = runtime.take_display();
+
+    // The first frame is painted only once the alternate screen is taken,
+    // so the baseline the damage is measured from is a frame the terminal
+    // actually shows. Painting before the alternate screen left the first
+    // frame on the main screen and made every later frame a diff against
+    // a picture that was never on the glass.
+    if loaded {
+        present(&mut out, &mut screen, &runtime)?;
+    }
 
     let mut buffer = [0u8; 64];
     let mut running = true;
