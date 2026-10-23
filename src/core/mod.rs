@@ -33,6 +33,9 @@ pub mod shape;
 #[cfg(test)]
 mod shape_tests;
 pub mod syntax;
+pub mod term;
+#[cfg(test)]
+mod term_tests;
 pub mod text;
 pub mod timeline;
 #[cfg(test)]

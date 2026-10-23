@@ -4,6 +4,8 @@
 //! bytes a terminal receives come out; an event goes in and the console gets an
 //! answer. They do not know how the pixels are made.
 
+mod lcars;
+
 use oko::adapters::presenter::{PaintError, paint};
 use oko::core::event::{Event, Key, KeyCode, Modifiers};
 use oko::core::focus::SurfaceId;

@@ -4,6 +4,9 @@
 //! data in `core`, and they own every operation that can fail for a reason the
 //! program cannot control.
 
+pub mod command;
+#[cfg(test)]
+mod command_tests;
 pub mod keys;
 #[cfg(test)]
 mod keys_tests;

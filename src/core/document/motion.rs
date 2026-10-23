@@ -21,7 +21,7 @@ use super::words::{AFTER, LOOP, OVER, TO, Words};
 /// The unit is always written, so `500ms` and `2s` are the only spellings,
 /// and a fraction of a second is written in milliseconds. A duration is the
 /// motion's own unit, so it is read here rather than among the words.
-fn duration(words: &mut Words) -> Result<u64, String> {
+pub(crate) fn duration(words: &mut Words) -> Result<u64, String> {
     let word = words.next().unwrap_or_default();
     let digits = word.chars().take_while(char::is_ascii_digit).count();
     let (number, unit) = word.split_at(digits);

@@ -1,13 +1,9 @@
 //! The runtime: the state of a console, with no device in it.
 //!
 //! It holds the session, the last good document, and the picture that is
-//! on the screen. It is told two things: that an event arrived, and that
-//! the document changed. It answers with what should happen: paint this
-//! frame, or hand the screen back.
-//!
-//! The device is outside it. The terminal's raw mode, the bytes it reads,
-//! the file's timestamp and the sleep between looks belong to the shell
-//! that drives this, and the shell is what talks to the operating system.
+//! on the screen. It is told that an event arrived, that a command produced
+//! output, or that the document changed. It answers with what should happen:
+//! paint this frame, run this command, or hand the screen back.
 
 use crate::core::document::{self, ParseError};
 use crate::core::event::Event;
@@ -27,9 +23,8 @@ pub struct Runtime {
     session: Session,
     panel: Option<Panel>,
     picture: Picture,
-    /// The moment the picture was last painted at.
     at: Option<u64>,
-    /// Whether the picture has come to rest at the end of the timeline.
+    fed_at: Option<u64>,
     settled: bool,
 }
 
@@ -41,14 +36,12 @@ impl Runtime {
             panel: None,
             picture: Picture::new((width, height)),
             at: None,
+            fed_at: None,
             settled: false,
         }
     }
 
     /// Take the display for this session.
-    ///
-    /// The console owns the screen and grants the lease once; the escape
-    /// chord is the only way to lose it.
     pub fn take_display(&mut self) -> Result<Generation, LeaseError> {
         self.session.grant_display(OWNER)
     }
@@ -59,14 +52,12 @@ impl Runtime {
     }
 
     /// A document arrived. The panel is now the frame it describes.
-    ///
-    /// A document that does not parse leaves the last good panel in place
-    /// and says why, with the line it was on.
     pub fn document(&mut self, text: &str) -> Result<(), String> {
         match document::parse(text) {
             Ok(panel) => {
                 self.panel = Some(panel);
                 self.at = None;
+                self.fed_at = None;
                 self.settled = false;
                 self.render();
                 Ok(())
@@ -75,12 +66,41 @@ impl Runtime {
         }
     }
 
+    /// Replace the text in the named terminal viewport and repaint.
+    pub fn output(&mut self, term: &str, text: &str) -> bool {
+        let Some(panel) = self.panel.as_mut() else {
+            return false;
+        };
+        if !panel.write(term, text) {
+            return false;
+        }
+        self.render();
+        true
+    }
+
+    /// Append text to the named terminal viewport and repaint.
+    pub fn append(&mut self, term: &str, text: &str) -> bool {
+        let Some(panel) = self.panel.as_mut() else {
+            return false;
+        };
+        if !panel.append(term, text) {
+            return false;
+        }
+        self.render();
+        true
+    }
+
+    /// The `(term, command)` feeds due to run at `now`.
+    pub fn due_feeds(&mut self, now: u64) -> Vec<(String, String)> {
+        let Some(panel) = self.panel.as_ref() else {
+            return Vec::new();
+        };
+        let due = panel.due_feeds(self.fed_at, now);
+        self.fed_at = Some(now);
+        due
+    }
+
     /// An event arrived. The panel answers first, then the session.
-    ///
-    /// The panel is the content, so a key is offered to it before the
-    /// session hears about it. The session holds the screen's authority, and
-    /// the escape chord is not bindable, so a key the panel does not want
-    /// still reaches the session (ADR 0009).
     pub fn event(&mut self, event: Event) -> Option<Effect> {
         if let Event::Resize { width, height } = event {
             self.picture.resize((width, height));
@@ -97,6 +117,11 @@ impl Runtime {
                     self.render();
                     return Some(Effect::Repaint);
                 }
+                Outcome::Run { term, command } => {
+                    self.settled = false;
+                    self.render();
+                    return Some(Effect::Run { term, command });
+                }
                 Outcome::Quit => return Some(Effect::ReclaimDisplay),
             }
         }
@@ -105,13 +130,6 @@ impl Runtime {
 
     /// The clock says the time is now. Paint the panel at this moment if the
     /// picture has changed.
-    ///
-    /// Contract:
-    ///   - `now` is the milliseconds since the document arrived.
-    ///   - True when the picture is new and the screen must be brought up
-    ///     to date; false when the picture is the same as it was.
-    ///   - A panel with no motion is painted once, when it is loaded.
-    ///   - After the timeline's end the picture has come to rest and stays.
     pub fn tick(&mut self, now: u64) -> bool {
         let Some(panel) = self.panel.as_ref() else {
             return false;
@@ -126,30 +144,19 @@ impl Runtime {
         self.render_at(now)
     }
 
-    /// The frame on the screen, if there is one.
     pub fn frame(&self) -> Option<&Frame> {
         self.picture.frame()
     }
 
-    /// How many frame buffers have been made.
-    ///
-    /// The picture is painted into one buffer and written into again, so
-    /// this counts the moments the size changed and not the ticks.
     pub fn frames_allocated(&self) -> usize {
         self.picture.frames_allocated()
     }
 
-    /// Draw the last good document again, at the current size.
     fn render(&mut self) {
         let now = self.at.unwrap_or(0);
         self.render_at(now);
     }
 
-    /// Draw the document as it is at this moment.
-    ///
-    /// A scene that is the same as the one the picture was painted from
-    /// paints the same picture, so nothing is painted and the frame is
-    /// left as it is.
     fn render_at(&mut self, now: u64) -> bool {
         let Some(scene) = self.panel.as_ref().map(|panel| panel.scene(now)) else {
             return false;
@@ -158,7 +165,6 @@ impl Runtime {
     }
 }
 
-/// The errors of a document that did not parse, one per line.
 fn name(errors: &[ParseError]) -> String {
     errors
         .iter()

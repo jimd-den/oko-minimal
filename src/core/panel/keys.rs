@@ -10,14 +10,19 @@
 
 use super::super::binding::{Action, Binding};
 use super::super::event::{Key, KeyCode};
+use super::super::term::Term;
+use super::flags::{self, Flag};
+use super::terms;
 
 /// What a key did to the panel.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
     /// Nothing changed: the panel is as it was and needs no repaint.
     Unchanged,
-    /// A flag changed: the panel is different and the runtime should repaint.
+    /// A flag or terminal changed: the panel is different and should repaint.
     Changed,
+    /// A binding or terminal prompt asked to run a command.
+    Run { term: String, command: String },
     /// The binding asked the program to end.
     Quit,
 }
@@ -66,5 +71,40 @@ pub fn name_of(key: Key) -> String {
         KeyCode::Left => "left".to_string(),
         KeyCode::Right => "right".to_string(),
         KeyCode::Function(number) => format!("f{number}"),
+    }
+}
+
+/// Perform `action` on the panel's state and return the resulting outcome.
+pub fn apply(
+    action: Action,
+    flags: &mut [Flag],
+    terms: &[Term],
+    focused: &mut Option<String>,
+) -> Outcome {
+    match action {
+        Action::Quit => Outcome::Quit,
+        Action::Set { flag, value } => {
+            if flags::set(flags, &flag, value) {
+                Outcome::Changed
+            } else {
+                Outcome::Unchanged
+            }
+        }
+        Action::Toggle { flag } => {
+            if flags::toggle(flags, &flag) {
+                Outcome::Changed
+            } else {
+                Outcome::Unchanged
+            }
+        }
+        Action::Run { term, command } => Outcome::Run { term, command },
+        Action::Focus { term } => {
+            if terms::declares(terms, &term) {
+                *focused = Some(term);
+                Outcome::Changed
+            } else {
+                Outcome::Unchanged
+            }
+        }
     }
 }

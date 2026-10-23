@@ -23,6 +23,10 @@ pub enum Action {
     Set { flag: String, value: bool },
     /// Flip the named flag between true and false.
     Toggle { flag: String },
+    /// Run a command and write its output to the named terminal.
+    Run { term: String, command: String },
+    /// Focus the named terminal for interactive command entry.
+    Focus { term: String },
     /// End the program.
     Quit,
 }

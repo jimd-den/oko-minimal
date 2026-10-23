@@ -157,22 +157,27 @@ The lint is green or it is not; the budget is a script, not a matter of taste.
 - `core`: geometry, frames, scenes, Cohen–Sutherland clipping, Bresenham lines,
   curves and arcs, the five-by-seven bitmap font and the text it draws, the
   reader for real fonts and the drawing of their glyphs, the document parser,
-  the panel with its flags and bindings, the lease, focus, and the session
-  reducer.
+  motions with multi-leg sequences and continuous `loop` cycles, the panel with
+  its flags (`set` and `toggle`), named terminal viewports (`term`), command and
+  API feeds (`feed`), command/focus bindings (`run`, `focus`, `input`), the
+  lease, focus, and the session reducer.
 - `adapters`: a terminal encoder (two square pixels per cell, 24-bit colour), a
   painter, a runtime that is a loop with no device in it, a presenter that
-  sends only the cells that changed, and the bounded SVG translator, which
+  sends only the cells that changed, a bounded `/bin/sh -c` command runner for
+  panel feeds and terminal viewports, and the bounded SVG translator, which
   reads labels as well as shapes and reports the shapes it could not draw.
 - `oko panel.oko` presents a panel and reloads it when the file changes;
   `oko panel.oko --once` paints one frame and stops. `oko-svg panel.svg` writes
-  the document to standard output and the report to standard error. Examples for
-  all of them.
-- 354 tests. The gate is `make check`: line budget, format, types, clippy, tests.
+  the document to standard output and the report to standard error. Examples
+  include `examples/lcars.oko` (a Star Trek LCARS operating system console with
+  swept Bézier elbows, looping animations, subsystem toggles, Unix feeds, and
+  an interactive bridge terminal).
+- 413 tests. The gate is `make check`: line budget, format, types, clippy, tests.
 
 ## What is deliberately absent
 
 Pointer input. In the display list: images, transforms and opacity. A panel
-that loops, fades, or reads an export's own animation. Shaping, kerning and
+that fades or reads an export's own animation. Shaping, kerning and
 hinting of real fonts. The surface wire format between processes. The boot
 console, getty handoff and the framebuffer presenters. A visual editor.
 

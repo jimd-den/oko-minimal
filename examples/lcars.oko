@@ -1,0 +1,52 @@
+# USS ENTERPRISE NCC-1701-D // OKO-LCARS OPERATING SYSTEM
+# Hot-editable display-list console and merged Unix terminal.
+
+flag tactical true
+flag engineering false
+flag alert false
+
+clear #05070a
+
+# Upper-left LCARS swept cubic elbow and header frame
+path M 2 14 L 2 6 C 2 2 6 2 12 2 L 26 2 L 26 6 L 14 6 C 11 6 10 7 10 10 L 10 14 Z fill #ff9d00
+rect 28 2 34 4 #ffaa44
+rect 64 2 14 4 #cc6699
+text 28 8 "LCARS 4711" 1 #ff9d00
+
+# Left LCARS sidebar pills
+rect 2 16 8 5 #ffaa44
+text 3 17 "TAC" 1 #05070a
+rect 2 22 8 5 #9999ff
+text 3 23 "ENG" 1 #05070a
+rect 2 28 8 5 #cc6699
+text 3 29 "SHL" 1 #05070a
+
+# Lower-left LCARS swept cubic elbow and footer frame
+path M 2 34 L 10 34 L 10 38 C 10 41 11 42 14 42 L 26 42 L 26 46 L 12 46 C 6 46 2 46 2 40 Z fill #cc6699
+rect 28 42 50 4 #9999ff
+
+# Heavy looping animations: warp core harmonic bars and sensor sweep
+rect 14 8 10 3 #4fc3f7 to 24 8 2 3 #9999ff over 1s to 14 8 10 3 #4fc3f7 over 1s loop
+line 14 14 78 14 #1f6feb to 14 39 78 39 #4fc3f7 over 2s to 14 14 78 14 #1f6feb over 2s loop when tactical
+rect 64 8 14 4 #ff3344 to 64 8 14 4 #3b0a10 over 500ms to 64 8 14 4 #ff3344 over 500ms loop when alert
+
+# Engineering warp-core telemetry bars
+rect 14 36 20 3 #ff9d00 to 14 36 60 3 #4fc3f7 over 1s to 14 36 20 3 #ff9d00 over 1s loop when engineering
+
+# Merged Unix terminal viewports and live feeds
+term 14 16 64 16 bridge 1 #ff9d00
+term 14 33 64 8 telemetry 1 #4fc3f7 when engineering
+feed bridge "uname -sr"
+feed telemetry "uptime" every 5s
+
+# Subsystem toggles, Unix command links, and live shell focus
+on key t toggle tactical
+on key e toggle engineering
+on key a toggle alert
+on key 1 run bridge "uname -a"
+on key 2 run bridge "ps -o pid,comm"
+on key 3 run bridge "df -h /"
+on key 4 run bridge "ls -1"
+on key i focus bridge
+on key enter focus bridge
+on key q quit

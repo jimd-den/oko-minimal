@@ -9,7 +9,9 @@
 //! known. The rules are here so that the panel holds the flags without
 //! knowing how a flag is found or turned on.
 
-use super::super::scene::Condition;
+use super::super::binding::{Action, Binding};
+use super::super::scene::{Condition, Element};
+use super::PanelError;
 
 /// A named flag and its value.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -84,4 +86,23 @@ pub fn holds(flags: &[Flag], condition: &Condition) -> bool {
         Condition::Always => true,
         Condition::Flag(name) => value_of(flags, name) == Some(true),
     }
+}
+
+/// Check that every flag named by a binding or an element condition was declared.
+pub fn check(flags: &[Flag], bindings: &[Binding], elements: &[Element]) -> Result<(), PanelError> {
+    for binding in bindings {
+        if let Action::Set { flag, .. } | Action::Toggle { flag } = binding.action()
+            && !declares(flags, flag)
+        {
+            return Err(PanelError::UndeclaredFlag { flag: flag.clone() });
+        }
+    }
+    for element in elements {
+        if let Condition::Flag(name) = &element.condition
+            && !declares(flags, name)
+        {
+            return Err(PanelError::UndeclaredFlag { flag: name.clone() });
+        }
+    }
+    Ok(())
 }

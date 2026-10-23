@@ -106,8 +106,17 @@ fn action(words: &mut Words) -> Result<Action, String> {
                 flag: name.to_string(),
             })
         }
+        "run" => {
+            let term = words.value().ok_or("expected a terminal name")?.to_string();
+            let command = words.label()?;
+            Ok(Action::Run { term, command })
+        }
+        "focus" => {
+            let term = words.value().ok_or("expected a terminal name")?.to_string();
+            Ok(Action::Focus { term })
+        }
         other => Err(format!(
-            "expected `set`, `toggle`, or `quit`, not `{other}`"
+            "expected `set`, `toggle`, `run`, `focus`, or `quit`, not `{other}`"
         )),
     }
 }

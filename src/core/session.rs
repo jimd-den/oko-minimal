@@ -10,13 +10,18 @@ use super::event::{Event, Key};
 use super::focus::{Focus, Route, SurfaceId};
 use super::lease::{Generation, Lease, LeaseError, OwnerId};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Effect {
     /// The console takes the screen back; the session's lease is gone.
     ReclaimDisplay,
     Deliver {
         surface: SurfaceId,
         key: Key,
+    },
+    /// Run a command and write its output to the named terminal viewport.
+    Run {
+        term: String,
+        command: String,
     },
     Repaint,
 }

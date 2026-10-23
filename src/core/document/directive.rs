@@ -9,12 +9,14 @@
 //! panel binds.
 
 use super::super::binding::Binding;
-use super::super::panel::Flag;
+use super::super::panel::{Feed, Flag};
 use super::super::scene::Element;
+use super::super::term::Term;
 use super::super::typeface::Setting;
 use super::fields::{self, Kind};
 use super::motion;
 use super::panel;
+use super::terms;
 use super::words::Words;
 
 /// What a line of a document adds to the panel.
@@ -27,6 +29,12 @@ pub(crate) enum Addition {
     Binding(Binding),
     /// The font the panel is set in.
     Font(Setting),
+    /// A terminal viewport placed on the panel.
+    Term(Term),
+    /// A command feed that populates a terminal viewport.
+    Feed(Feed),
+    /// The terminal that starts with keyboard focus.
+    Input(String),
 }
 
 pub(crate) fn parse(source: &str) -> Result<Addition, String> {
@@ -36,6 +44,9 @@ pub(crate) fn parse(source: &str) -> Result<Addition, String> {
         "flag" => Ok(Addition::Flag(panel::flag(&mut words)?)),
         "font" => Ok(Addition::Font(panel::font(&mut words)?)),
         "on" => Ok(Addition::Binding(panel::binding(&mut words)?)),
+        "term" => Ok(Addition::Term(terms::term(&mut words)?)),
+        "feed" => Ok(Addition::Feed(terms::feed(&mut words)?)),
+        "input" => Ok(Addition::Input(terms::input(&mut words)?)),
         _ => {
             let Some(kind) = Kind::of(name) else {
                 return Err(format!("unknown directive `{name}`"));

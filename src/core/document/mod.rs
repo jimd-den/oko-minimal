@@ -5,11 +5,6 @@
 //! system: read the file, parse it, render it. A good document replaces the last
 //! good scene atomically; a bad one changes nothing and reports every bad line
 //! at once.
-//!
-//! This module owns the loop, the operation budget, and the error list. What a
-//! single directive means lives in `directive`; what a word means lives in
-//! `core::syntax`. The parser is total: no input makes it panic, and this is the
-//! only text that arrives from outside the program.
 
 mod directive;
 #[cfg(test)]
@@ -27,6 +22,9 @@ mod panel_tests;
 mod path;
 #[cfg(test)]
 mod path_tests;
+mod terms;
+#[cfg(test)]
+mod terms_tests;
 #[cfg(test)]
 mod tests;
 mod words;
@@ -37,8 +35,9 @@ pub use error::ParseError;
 
 use super::binding::Action;
 use super::event::Key;
-use super::panel::{Flag, Panel, PanelError};
+use super::panel::{Feed, Flag, Panel, PanelError};
 use super::scene::{Condition, Scene};
+use super::term::Term;
 use directive::Addition;
 
 /// A document larger than this is a mistake, not a panel. Four thousand
@@ -49,12 +48,12 @@ pub fn parse(text: &str) -> Result<Panel, Vec<ParseError>> {
     let mut scene = Scene::new();
     let mut flags: Vec<Flag> = Vec::new();
     let mut bindings = Vec::new();
+    let mut terms: Vec<Term> = Vec::new();
+    let mut feeds: Vec<Feed> = Vec::new();
+    let mut focused: Option<String> = None;
     let mut errors = Vec::new();
 
-    // Where each flag was used, so that a refusal can name the line.
     let mut uses: Vec<(String, usize)> = Vec::new();
-    // The keys that are bound, and the lines they were bound on, so that
-    // a refusal can name the line of the second binding.
     let mut bound: Vec<(Key, usize)> = Vec::new();
 
     for (index, line) in text.lines().enumerate() {
@@ -93,11 +92,38 @@ pub fn parse(text: &str) -> Result<Panel, Vec<ParseError>> {
                 scene.set_font(Some(setting));
             }
             Ok(Addition::Binding(binding)) => {
-                if let Action::Set { flag, .. } | Action::Toggle { flag } = binding.action() {
-                    uses.push((flag.clone(), number));
+                match binding.action() {
+                    Action::Set { flag, .. } | Action::Toggle { flag } => {
+                        uses.push((flag.clone(), number));
+                    }
+                    Action::Run { term, .. } | Action::Focus { term } => {
+                        uses.push((term.clone(), number));
+                    }
+                    Action::Quit => {}
                 }
                 bound.push((binding.key(), number));
                 bindings.push(binding);
+            }
+            Ok(Addition::Term(term)) => {
+                if terms.iter().any(|declared| declared.name() == term.name()) {
+                    errors.push(ParseError::new(
+                        number,
+                        format!("the terminal `{}` is declared twice", term.name()),
+                    ));
+                } else {
+                    if let Condition::Flag(name) = term.condition() {
+                        uses.push((name.clone(), number));
+                    }
+                    terms.push(term);
+                }
+            }
+            Ok(Addition::Feed(feed)) => {
+                uses.push((feed.term().to_string(), number));
+                feeds.push(feed);
+            }
+            Ok(Addition::Input(name)) => {
+                uses.push((name.clone(), number));
+                focused = Some(name);
             }
             Err(problem) => errors.push(ParseError::new(number, problem)),
         }
@@ -107,24 +133,24 @@ pub fn parse(text: &str) -> Result<Panel, Vec<ParseError>> {
         return Err(errors);
     }
 
-    match Panel::new(scene, flags, bindings) {
-        Ok(panel) => Ok(panel),
-        Err(problem) => {
+    Panel::new(scene, flags, bindings)
+        .and_then(|panel| panel.with_terminals(terms, feeds, focused))
+        .map_err(|problem| {
             let line = line_of(&problem, &uses, &bound);
-            Err(vec![ParseError::new(line, problem.to_string())])
-        }
-    }
+            vec![ParseError::new(line, problem.to_string())]
+        })
 }
 
-/// The line a refusal is about.
-///
-/// A flag that was not declared is refused at the line that used it, and a
-/// key that is bound twice is refused at the line that bound it again.
 fn line_of(problem: &PanelError, uses: &[(String, usize)], bound: &[(Key, usize)]) -> usize {
     match problem {
         PanelError::UndeclaredFlag { flag } => uses
             .iter()
             .find(|(name, _)| name == flag)
+            .map(|(_, line)| *line)
+            .unwrap_or(1),
+        PanelError::UndeclaredTerm { term } => uses
+            .iter()
+            .find(|(name, _)| name == term)
             .map(|(_, line)| *line)
             .unwrap_or(1),
         PanelError::DuplicateKey { key } => bound

@@ -25,6 +25,8 @@ pub(crate) const LOOP: &str = "loop";
 pub(crate) const WHEN: &str = "when";
 /// The word that states the space between the letters of a text.
 pub(crate) const SPACING: &str = "spacing";
+/// The word that states how often a feed runs.
+pub(crate) const EVERY: &str = "every";
 
 /// The words of a line, and where we are among them.
 #[derive(Debug)]
@@ -154,7 +156,7 @@ impl<'a> Words<'a> {
 
 /// Whether a word is one the document reserves for its grammar.
 pub(crate) fn is_keyword(word: &str) -> bool {
-    matches!(word, AFTER | TO | OVER | LOOP | WHEN | SPACING)
+    matches!(word, AFTER | TO | OVER | LOOP | WHEN | SPACING | EVERY)
 }
 
 /// The words of a line, a quoted run being one word.
