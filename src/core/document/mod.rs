@@ -93,7 +93,7 @@ pub fn parse(text: &str) -> Result<Panel, Vec<ParseError>> {
                 scene.set_font(Some(setting));
             }
             Ok(Addition::Binding(binding)) => {
-                if let Action::Set { flag, .. } = binding.action() {
+                if let Action::Set { flag, .. } | Action::Toggle { flag } = binding.action() {
                     uses.push((flag.clone(), number));
                 }
                 bound.push((binding.key(), number));

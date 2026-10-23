@@ -70,7 +70,7 @@ impl Panel {
     /// that names one is refused here rather than ignored later.
     pub fn new(scene: Scene, flags: Vec<Flag>, bindings: Vec<Binding>) -> Result<Self, PanelError> {
         for binding in &bindings {
-            if let Action::Set { flag, .. } = binding.action()
+            if let Action::Set { flag, .. } | Action::Toggle { flag } = binding.action()
                 && !declares(&flags, flag)
             {
                 return Err(PanelError::UndeclaredFlag { flag: flag.clone() });
@@ -174,6 +174,13 @@ impl Panel {
             Action::Quit => Outcome::Quit,
             Action::Set { flag, value } => {
                 if flags::set(&mut self.flags, &flag, value) {
+                    Outcome::Changed
+                } else {
+                    Outcome::Unchanged
+                }
+            }
+            Action::Toggle { flag } => {
+                if flags::toggle(&mut self.flags, &flag) {
                     Outcome::Changed
                 } else {
                     Outcome::Unchanged

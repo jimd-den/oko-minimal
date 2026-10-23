@@ -21,6 +21,8 @@ pub const RESERVED_ESCAPE: Key = Key::new(KeyCode::Escape, Modifiers::CTRL_ALT);
 pub enum Action {
     /// Set the named flag to the value.
     Set { flag: String, value: bool },
+    /// Flip the named flag between true and false.
+    Toggle { flag: String },
     /// End the program.
     Quit,
 }

@@ -100,7 +100,15 @@ fn action(words: &mut Words) -> Result<Action, String> {
                 value,
             })
         }
-        other => Err(format!("expected `set` or `quit`, not `{other}`")),
+        "toggle" => {
+            let name = words.value().ok_or("expected a flag name")?;
+            Ok(Action::Toggle {
+                flag: name.to_string(),
+            })
+        }
+        other => Err(format!(
+            "expected `set`, `toggle`, or `quit`, not `{other}`"
+        )),
     }
 }
 

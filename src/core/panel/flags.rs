@@ -65,6 +65,15 @@ pub fn set(flags: &mut [Flag], name: &str, value: bool) -> bool {
     true
 }
 
+/// Flip the named flag between true and false.
+pub fn toggle(flags: &mut [Flag], name: &str) -> bool {
+    let Some(flag) = flags.iter_mut().find(|flag| flag.name == name) else {
+        return false;
+    };
+    flag.value = !flag.value;
+    true
+}
+
 /// Whether the condition holds in these flags.
 ///
 /// A condition on a flag that was not declared does not hold: the panel

@@ -158,4 +158,14 @@ mod tests {
         assert_eq!(error[0].line, 2);
         assert!(error[0].problem.contains("enter"), "{:?}", error[0]);
     }
+
+    #[test]
+    fn a_key_toggles_a_flag_back_and_forth() {
+        let mut panel = parse("flag tactical\non key t toggle tactical").expect("a valid document");
+
+        assert_eq!(panel.key(Key::plain(KeyCode::Char('t'))), Outcome::Changed);
+        assert_eq!(panel.flag("tactical"), Some(true));
+        assert_eq!(panel.key(Key::plain(KeyCode::Char('t'))), Outcome::Changed);
+        assert_eq!(panel.flag("tactical"), Some(false));
+    }
 }
