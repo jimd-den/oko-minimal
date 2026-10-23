@@ -55,12 +55,13 @@ The question is whether to write the reader.
 - **The faces are embedded in the binary** and chosen by name in the
   document. A panel says `font "dejavu-mono"` and the labels that follow are
   set in that face; a panel that says nothing is set in the built-in font.
-  The number in a text directive is the built-in font's scale, or the size in
-  pixels of a named face's em box. The document says which face it is using,
-  so the two are never confused; a panel that mixes them is asking for
-  trouble it can have.
+  The number in a text directive is the built-in font's scale. *(Amended by
+  ADR 0014: the number was also "the size in pixels of a named face's em
+  box", which made the meaning of every number depend on the face, and a
+  font that could be swapped at runtime would then have resized every label
+  when it was swapped.)*
 - **A variable font is a font at a location.** The panel may name the axes
-  and the coordinates: `font "inter" 16 wght=700 wdth=100`. A face with no
+  and the coordinates: `font "inter" wght=700`. A face with no
   axes is a face with one location, and the same code draws it.
 
 ## Consequences
@@ -75,7 +76,10 @@ The question is whether to write the reader.
   real face simply has far fewer holes than fifty-five glyphs.
 - The size rule of ADR 0003 does not change for the built-in font. For a
   named face, a size in pixels is exact, and the approximation of the
-  translator's em box does not apply.
+  translator's em box does not apply. *(Amended by ADR 0014: the number in a
+  text directive is the built-in font's scale for every face, and a named
+  face is drawn to that scale's capital height, so that a change of face does
+  not change the size of a label.)*
 
 ## Revisit if
 

@@ -10,14 +10,17 @@ use super::terminal::Terminal;
 
 /// A pseudo-terminal: a master side and a slave side, and the slave behaves
 /// like a terminal.
-struct Pty {
-    master: libc::c_int,
-    slave: libc::c_int,
+///
+/// Shared with `shell_tests`, which needs a real terminal to run the shell
+/// against: the bug it pins is an order of bytes, and only a device shows it.
+pub(crate) struct Pty {
+    pub(crate) master: libc::c_int,
+    pub(crate) slave: libc::c_int,
 }
 
 impl Pty {
     /// Open a pseudo-terminal.
-    fn open() -> Pty {
+    pub(crate) fn open() -> Pty {
         let master = unsafe { libc::open(c"/dev/ptmx".as_ptr(), libc::O_RDWR | libc::O_NOCTTY) };
         assert!(master >= 0, "the master side of a pty");
 

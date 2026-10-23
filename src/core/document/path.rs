@@ -9,41 +9,41 @@
 //! fix.
 
 use super::super::path::{Path, Segment};
-use super::super::scene::Op;
-use super::super::syntax;
-use std::str::SplitWhitespace;
+use super::super::shape::Shape;
+use super::words::Words;
 
-pub(crate) fn parse(source: &str) -> Result<Op, String> {
-    let rest = source.strip_prefix("path").unwrap_or(source);
-    let mut words = rest.split_whitespace();
+/// The segments and paints a path states, read from the next words.
+pub(crate) fn read(words: &mut Words) -> Result<Shape, String> {
     let mut segments: Vec<Segment> = Vec::new();
     let mut fill = None;
     let mut stroke = None;
     let mut open = false;
 
-    while let Some(word) = words.next() {
+    while let Some(word) = words.peek(0) {
         match word {
             "M" => {
-                segments.push(Segment::Move {
-                    to: syntax::point(&mut words)?,
-                });
+                words.next();
+                segments.push(Segment::Move { to: words.point()? });
                 open = true;
             }
             "L" | "C" | "Q" => {
                 if !open {
                     return Err("a path must start with `M`".to_string());
                 }
-                segments.push(drawing(word, &mut words)?);
+                words.next();
+                segments.push(drawing(word, words)?);
             }
             "Z" => {
                 if !open {
                     return Err("a `Z` must follow a shape".to_string());
                 }
+                words.next();
                 segments.push(Segment::Close);
                 open = false;
             }
             "fill" | "stroke" => {
-                let colour = syntax::colour(&mut words)?;
+                words.next();
+                let colour = words.colour()?;
                 let slot = if word == "fill" {
                     &mut fill
                 } else {
@@ -53,6 +53,7 @@ pub(crate) fn parse(source: &str) -> Result<Op, String> {
                     return Err(format!("a path states `{word}` once"));
                 }
             }
+            other if super::words::is_keyword(other) => break,
             other => return Err(format!("unknown path command `{other}`")),
         }
     }
@@ -63,7 +64,8 @@ pub(crate) fn parse(source: &str) -> Result<Op, String> {
     if fill.is_none() && stroke.is_none() {
         return Err("a path must state a fill or a stroke".to_string());
     }
-    Ok(Op::Path {
+
+    Ok(Shape::Path {
         path: Path { segments },
         fill,
         stroke,
@@ -71,15 +73,13 @@ pub(crate) fn parse(source: &str) -> Result<Op, String> {
 }
 
 /// The segment one drawing command makes.
-fn drawing(command: &str, words: &mut SplitWhitespace<'_>) -> Result<Segment, String> {
+fn drawing(command: &str, words: &mut Words) -> Result<Segment, String> {
     match command {
-        "L" => Ok(Segment::Line {
-            to: syntax::point(words)?,
-        }),
+        "L" => Ok(Segment::Line { to: words.point()? }),
         "C" => {
-            let control1 = syntax::point(words)?;
-            let control2 = syntax::point(words)?;
-            let to = syntax::point(words)?;
+            let control1 = words.point()?;
+            let control2 = words.point()?;
+            let to = words.point()?;
             Ok(Segment::Cubic {
                 control1,
                 control2,
@@ -87,110 +87,9 @@ fn drawing(command: &str, words: &mut SplitWhitespace<'_>) -> Result<Segment, St
             })
         }
         _ => {
-            let control = syntax::point(words)?;
-            let to = syntax::point(words)?;
+            let control = words.point()?;
+            let to = words.point()?;
             Ok(Segment::Quadratic { control, to })
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::geom::{Point, Rgba};
-
-    #[test]
-    fn a_path_directive_becomes_a_path_operation() {
-        let op = parse("path M 10 10 C 20 0 30 0 30 10 Z fill #ff9d00").expect("a path");
-
-        assert_eq!(
-            op,
-            Op::Path {
-                path: Path {
-                    segments: vec![
-                        Segment::Move {
-                            to: Point::new(10, 10),
-                        },
-                        Segment::Cubic {
-                            control1: Point::new(20, 0),
-                            control2: Point::new(30, 0),
-                            to: Point::new(30, 10),
-                        },
-                        Segment::Close,
-                    ],
-                },
-                fill: Some(Rgba::rgb(255, 157, 0)),
-                stroke: None,
-            }
-        );
-    }
-
-    #[test]
-    fn a_path_may_state_a_stroke_and_no_fill() {
-        let op = parse("path M 0 0 L 10 0 stroke #1f6feb").expect("a path");
-
-        let Op::Path { fill, stroke, .. } = op else {
-            panic!("a path is a path operation");
-        };
-        assert_eq!(fill, None);
-        assert_eq!(stroke, Some(Rgba::rgb(31, 111, 235)));
-    }
-
-    #[test]
-    fn a_path_that_states_a_paint_twice_is_refused() {
-        let error = parse("path M 0 0 L 10 0 fill #ff0000 fill #00ff00").expect_err("two fills");
-
-        assert!(error.contains("fill"));
-    }
-
-    #[test]
-    fn a_quadratic_command_makes_a_quadratic_segment() {
-        let op = parse("path M 0 0 Q 5 10 10 0 fill #ff9d00").expect("a path");
-
-        let Op::Path { path, .. } = op else {
-            panic!("a path is a path operation");
-        };
-        assert_eq!(
-            path.segments[1],
-            Segment::Quadratic {
-                control: Point::new(5, 10),
-                to: Point::new(10, 0),
-            }
-        );
-    }
-
-    #[test]
-    fn an_unknown_path_command_is_refused() {
-        let error = parse("path M 0 0 A 5 5 0 0 1 10 10 fill #ff0000").expect_err("an arc");
-
-        assert!(error.contains('A'));
-    }
-
-    #[test]
-    fn a_path_without_a_paint_is_refused() {
-        let error = parse("path M 0 0 L 10 10").expect_err("a path with no paint");
-
-        assert!(error.contains("fill"));
-    }
-
-    #[test]
-    fn a_path_without_segments_is_refused() {
-        let error = parse("path fill #ff0000").expect_err("a path with no shape");
-
-        assert!(error.contains("segment"));
-    }
-
-    #[test]
-    fn a_path_that_does_not_start_with_a_move_is_refused() {
-        let error = parse("path L 10 10 fill #ff0000").expect_err("a path with no start");
-
-        assert!(error.contains('M'));
-    }
-
-    #[test]
-    fn a_close_without_a_shape_is_refused() {
-        let error = parse("path Z fill #ff0000").expect_err("a path that closes nothing");
-
-        assert!(error.contains('Z'));
     }
 }

@@ -1,0 +1,11 @@
+# Every glyph the built-in font has.
+#
+# The font is finished when it can draw what an export writes, so this
+# panel draws all of it: the letters, the digits and the punctuation.
+
+clear #05070a
+text 2 2 " ABCDEFGHIJKLMNOPQRS" 1 #ff9d00
+text 2 10 "TUVWXYZabcdefghijklm" 1 #ff9d00
+text 2 18 "nopqrstuvwxyz0123456" 1 #ff9d00
+text 2 26 "789.,:-+/%?#&;!'()[]" 1 #4fc3f7
+text 2 34 "<>=_" 1 #4fc3f7

@@ -50,12 +50,13 @@ fn an_svg_export_becomes_a_panel_document() {
     let document = oko::adapters::svg::translate(svg)
         .expect("a supported export")
         .document;
-    let scene =
+    let panel =
         oko::core::document::parse(&document).expect("the translator writes valid documents");
 
+    let scene = panel.scene(0);
     assert_eq!(
-        scene.ops()[0],
-        oko::core::scene::Op::Rect {
+        scene.elements()[0].shape,
+        oko::core::shape::Shape::Rect {
             area: oko::core::geom::Rect::new(0, 0, 80, 48),
             color: oko::core::geom::Rgba::rgb(5, 7, 10),
         }
@@ -93,8 +94,9 @@ fn an_arc_is_drawn_as_a_path_directive() {
         "an arc is drawn, not refused"
     );
 
-    let scene = oko::core::document::parse(&translation.document).expect("a document");
-    let oko::core::scene::Op::Path { path, .. } = &scene.ops()[0] else {
+    let panel = oko::core::document::parse(&translation.document).expect("a document");
+    let scene = panel.scene(0);
+    let oko::core::shape::Shape::Path { path, .. } = &scene.elements()[0].shape else {
         panic!("the arc is a path operation");
     };
     assert_eq!(path.segments.len(), 2, "a move and one cubic");
@@ -111,7 +113,7 @@ fn an_svg_label_becomes_a_text_operation() {
     let document = oko::adapters::svg::translate(svg)
         .expect("a supported export")
         .document;
-    let scene =
+    let panel =
         oko::core::document::parse(&document).expect("the translator writes valid documents");
 
     let directives: Vec<&str> = document
@@ -126,26 +128,29 @@ fn an_svg_label_becomes_a_text_operation() {
         ]
     );
 
-    let labels: Vec<oko::core::scene::Op> = scene
-        .ops()
+    let labels: Vec<oko::core::shape::Shape> = panel
+        .scene(0)
+        .elements()
         .iter()
-        .filter(|op| matches!(op, oko::core::scene::Op::Text { .. }))
-        .cloned()
+        .filter(|e| matches!(e.shape, oko::core::shape::Shape::Text { .. }))
+        .map(|e| e.shape.clone())
         .collect();
     assert_eq!(
         labels,
         [
-            oko::core::scene::Op::Text {
+            oko::core::shape::Shape::Text {
                 at: oko::core::geom::Point::new(6, 3),
                 text: "OKO".to_string(),
                 scale: 3,
                 color: oko::core::geom::Rgba::rgb(255, 157, 0),
+                spacing: 0,
             },
-            oko::core::scene::Op::Text {
+            oko::core::shape::Shape::Text {
                 at: oko::core::geom::Point::new(6, 31),
                 text: "SYSTEM READY".to_string(),
                 scale: 1,
                 color: oko::core::geom::Rgba::rgb(201, 209, 217),
+                spacing: 0,
             },
         ]
     );

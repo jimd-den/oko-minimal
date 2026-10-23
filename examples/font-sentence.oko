@@ -1,0 +1,8 @@
+# A sentence in the built-in font.
+#
+# The font is proportional now, so the words are as wide as their letters
+# and not as wide as the widest letter times the number of letters.
+
+clear #05070a
+text 2 2 "The quick brown fox" 2 #ff9d00
+text 2 18 "jumps over the lazy dog" 2 #4fc3f7

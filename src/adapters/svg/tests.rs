@@ -116,8 +116,8 @@ fn a_triangle_is_filled_rather_than_refused() {
         "a triangle is drawn, not refused"
     );
 
-    let scene = crate::core::document::parse(&translation.document).expect("a document");
-    let frame = crate::core::raster::render(&scene, 8, 8).expect("a frame");
+    let panel = crate::core::document::parse(&translation.document).expect("a document");
+    let frame = crate::core::raster::render(&panel.scene(0), 8, 8).expect("a frame");
     assert_eq!(
         frame.color_at(crate::core::geom::Point::new(2, 2)),
         Some(crate::core::geom::Rgba::rgb(255, 157, 0)),

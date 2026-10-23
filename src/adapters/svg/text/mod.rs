@@ -9,10 +9,15 @@
 //!
 //! This module holds the placement rules. The label rules live in `run`.
 
+mod properties;
 mod run;
+#[cfg(test)]
+mod run_tests;
 #[cfg(test)]
 mod tests;
 
+pub use properties::Anchor;
+use properties::{anchor, length, letter_spacing, stretches};
 pub use run::{Label, emit, label};
 
 use super::error::SvgError;
@@ -30,16 +35,29 @@ pub struct Style {
     pub x: i32,
     pub y: i32,
     pub size: f64,
+    /// The space the design put between the letters, in pixels.
+    pub spacing: i64,
+    /// Which end of the text the position refers to.
+    pub anchor: Anchor,
+    /// The length the design holds the text to, if it states one.
+    pub length: Option<i64>,
+    /// Whether the design stretches the glyphs as well as the spacing.
+    pub stretches: bool,
 }
 
 impl Style {
     /// The style a `<text>` element starts with.
     pub fn of_text(element: &Element, origin: (i32, i32)) -> Result<Style, SvgError> {
+        let size = declared_size(element)?.unwrap_or(DEFAULT_SIZE);
         Ok(Style {
             origin,
             x: origin.0 + position(element, "x")?,
             y: origin.1 + position(element, "y")? + offset(element, "dy")?,
-            size: declared_size(element)?.unwrap_or(DEFAULT_SIZE),
+            size,
+            spacing: letter_spacing(element, size)?.unwrap_or(0),
+            anchor: anchor(element)?.unwrap_or(Anchor::Start),
+            length: length(element)?,
+            stretches: stretches(element)?,
         })
     }
 
@@ -63,6 +81,10 @@ impl Style {
             x,
             y: y + offset(element, "dy")?,
             size: declared_size(element)?.unwrap_or(self.size),
+            spacing: letter_spacing(element, self.size)?.unwrap_or(self.spacing),
+            anchor: anchor(element)?.unwrap_or(self.anchor),
+            length: length(element)?,
+            stretches: stretches(element)?,
         })
     }
 }

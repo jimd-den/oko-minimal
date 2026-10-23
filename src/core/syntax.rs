@@ -9,7 +9,7 @@
 //! message a person can act on.
 
 use super::font;
-use super::geom::{Point, Rect, Rgba};
+use super::geom::{Point, Rgba};
 use std::str::SplitWhitespace;
 
 pub const MAX_COORDINATE: i64 = 32_767;
@@ -18,15 +18,6 @@ pub const MAX_TEXT_CHARS: usize = 128;
 
 pub(crate) fn point(words: &mut SplitWhitespace<'_>) -> Result<Point, String> {
     Ok(Point::new(coordinate(words)?, coordinate(words)?))
-}
-
-pub(crate) fn area(words: &mut SplitWhitespace<'_>) -> Result<Rect, String> {
-    Ok(Rect::new(
-        coordinate(words)?,
-        coordinate(words)?,
-        extent(words)?,
-        extent(words)?,
-    ))
 }
 
 fn coordinate(words: &mut SplitWhitespace<'_>) -> Result<i32, String> {
@@ -38,17 +29,6 @@ fn coordinate(words: &mut SplitWhitespace<'_>) -> Result<i32, String> {
         return Err(format!("coordinate {value} is outside ±{MAX_COORDINATE}"));
     }
     Ok(value as i32)
-}
-
-fn extent(words: &mut SplitWhitespace<'_>) -> Result<u32, String> {
-    let word = words.next().ok_or("expected a width or height")?;
-    let value: i64 = word
-        .parse()
-        .map_err(|_| format!("`{word}` is not a number"))?;
-    if !(1..=MAX_SIDE).contains(&value) {
-        return Err(format!("size {value} is outside 1..={MAX_SIDE}"));
-    }
-    Ok(value as u32)
 }
 
 pub(crate) fn colour(words: &mut SplitWhitespace<'_>) -> Result<Rgba, String> {
@@ -125,20 +105,6 @@ pub(crate) fn quoted(source: &str) -> Result<(String, &str), String> {
     Ok((label.to_string(), &rest[end + 1..]))
 }
 
-pub(crate) fn colour_rest(source: &str) -> Result<Rgba, String> {
-    let mut words = source.split_whitespace();
-    let colour = colour(&mut words)?;
-    end(&mut words)?;
-    Ok(colour)
-}
-
-pub(crate) fn end(words: &mut SplitWhitespace<'_>) -> Result<(), String> {
-    match words.next() {
-        Some(extra) => Err(format!("unexpected `{extra}`")),
-        None => Ok(()),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -148,17 +114,6 @@ mod tests {
         let mut words = "12 -7".split_whitespace();
 
         assert_eq!(point(&mut words), Ok(Point::new(12, -7)));
-    }
-
-    #[test]
-    fn a_size_must_be_positive() {
-        let mut words = "0".split_whitespace();
-
-        assert!(
-            extent(&mut words)
-                .expect_err("a zero size")
-                .contains("1..=")
-        );
     }
 
     #[test]
@@ -173,12 +128,5 @@ mod tests {
         let mut words = "#fff".split_whitespace();
 
         assert!(colour(&mut words).unwrap_err().contains("#fff"));
-    }
-
-    #[test]
-    fn a_trailing_word_is_refused() {
-        let mut words = "please".split_whitespace();
-
-        assert!(end(&mut words).unwrap_err().contains("please"));
     }
 }

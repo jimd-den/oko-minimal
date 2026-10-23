@@ -1,6 +1,8 @@
 # 0010 — The font is finished when it can draw what an export writes
 
 Status: accepted · Date: 2026-10-21
+Amended: 2026-10-21, when the fitting was written and the font turned out
+to be wider than the faces the exports were set in.
 
 ## Context
 
@@ -51,6 +53,10 @@ The glyph's width is part of the glyph, not a guess made at draw time.
 - `textLength` with `lengthAdjust="spacing"` is a length the design holds
   the text to. The translator computes the spacing that fills it, the way a
   browser does, and the panel's text occupies the width the design gave it.
+  A length *shorter* than the text is not held to: the built-in font is
+  wider than the face the design was set in, so holding to it would overlap
+  the letters. The text is drawn at the font's own width and the report says
+  so, with the two widths in it.
 - `text-anchor` decides which end of the text the position refers to:
   `start` is the left edge, `middle` is the centre, `end` is the right edge.
   A right-aligned label in an export is right-aligned in the panel.

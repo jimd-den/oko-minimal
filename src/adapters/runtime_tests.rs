@@ -2,7 +2,6 @@
 
 use super::runtime::Runtime;
 use crate::core::event::{Event, Key, KeyCode, Modifiers};
-use crate::core::frame::Frame;
 use crate::core::geom::Point;
 use crate::core::session::Effect;
 
@@ -97,15 +96,40 @@ fn a_key_with_nothing_focused_is_dropped() {
 }
 
 #[test]
-fn a_frame_is_the_size_it_was_asked_for() {
+fn a_key_reaches_the_panel_and_the_frame_changes() {
     let mut runtime = runtime(8, 4);
-    runtime.document("clear #000000").expect("a valid document");
+    runtime
+        .document(
+            "flag shown\nclear #000000\nrect 0 0 2 2 #ff0000 when shown\non key enter set shown true",
+        )
+        .expect("a valid document");
 
-    let frame: &Frame = runtime.frame().expect("a frame");
-
+    let before = runtime.frame().expect("a frame");
     assert_eq!(
-        frame.color_at(Point::new(7, 3)),
-        Some(crate::core::geom::Rgba::BLACK)
+        before.color_at(Point::new(0, 0)),
+        Some(crate::core::geom::Rgba::rgb(0, 0, 0)),
+        "the shape is hidden while the flag is false"
     );
-    assert_eq!(frame.color_at(Point::new(8, 3)), None);
+
+    let effect = runtime.event(Event::Key(Key::plain(KeyCode::Enter)));
+
+    assert_eq!(effect, Some(Effect::Repaint));
+    let after = runtime.frame().expect("a frame");
+    assert_eq!(
+        after.color_at(Point::new(0, 0)),
+        Some(crate::core::geom::Rgba::rgb(255, 0, 0)),
+        "the shape is drawn now"
+    );
+}
+
+#[test]
+fn a_quit_binding_hands_the_screen_back() {
+    let mut runtime = runtime(8, 4);
+    runtime
+        .document("on key escape quit")
+        .expect("a valid document");
+
+    let effect = runtime.event(Event::Key(Key::plain(KeyCode::Escape)));
+
+    assert_eq!(effect, Some(Effect::ReclaimDisplay));
 }

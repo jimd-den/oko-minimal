@@ -12,7 +12,7 @@
 | Slot | Value |
 |---|---|
 | `PROJECT` | ỌKỌ is a console that replaces the display server with a display list, so a bare machine reaches a login prompt and hot-editable panels with no browser, GPU, or network. |
-| `LANGUAGE` / `STACK` | Rust 1.99.1, edition 2024 / `std` + `libc` only; no async runtime, no GUI toolkit, no browser in the boot path |
+| `LANGUAGE` / `STACK` | Rust 1.99.1, edition 2024 / `std` + `libc` + `skrifa`; no async runtime, no GUI toolkit, no browser in the boot path |
 | `UNIT_CMD` | `cargo test -q -- --test-threads=1` |
 | `CHECK_CMD` | `make check` |
 | `LINE_CHECK_CMD` | `python3 tools/check_line_budget.py` |
@@ -30,7 +30,7 @@ Change a command here and in the `Makefile` in the same commit.
 
 ---|---|---|
 | `ỌKỌ is a console that replaces the display server with a display list, so a bare machine reaches a login prompt and hot-editable panels with no browser, GPU, or network.` | One line: what this software is and who feels it | sentence |
-| `Rust 1.99.1 (edition 2024)` / ``std` + `libc` only; no async runtime, no GUI toolkit, no browser in the boot path` | Language, runtime, framework versions | exact |
+| `Rust 1.99.1 (edition 2024)` / ``std` + `libc` + `skrifa`; no async runtime, no GUI toolkit, no browser in the boot path` | Language, runtime, framework versions | exact |
 | `cargo test -q -- --test-threads=1` | Fast unit test command | < 10 s |
 | `make check` | Whole-repo gate: tests + lint + types + line budget | < 3 min |
 | `python3 tools/check_line_budget.py` | File line-budget check | Appendix D |

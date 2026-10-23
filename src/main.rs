@@ -21,7 +21,11 @@ fn main() -> ExitCode {
     if arguments.once {
         return paint(&arguments);
     }
-    match shell::run(&arguments.path) {
+    let Ok(mut terminal) = oko::adapters::terminal::Terminal::stdin() else {
+        return ExitCode::FAILURE;
+    };
+    let mut out = std::io::stdout();
+    match shell::run(&arguments.path, &mut out, &mut terminal) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("oko: {}: {error}", arguments.path.display());
