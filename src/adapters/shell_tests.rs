@@ -87,6 +87,48 @@ fn the_alternate_screen_is_taken_before_the_first_frame_is_painted() {
     );
 }
 
+/// An escape pressed alone releases the terminal before the next key.
+///
+/// The regression this pins: a lone escape byte waited in the decoder for
+/// the rest of a sequence, the loop's timed-out reads never flushed it, and
+/// the next key arrived glued to it — escape and `x` decoded as alt+x, and
+/// the focused terminal swallowed both, so the panel never saw its key.
+/// The witness needs the keys apart in time, because the bug is a timeout
+/// that never fires: the gaps below are thirty times the loop's 16ms frame.
+/// The escape chord at the end is the rescue: it ends the run on the broken
+/// code too, so the test fails on its assertion instead of hanging.
+#[test]
+fn escape_releases_the_terminal_so_the_next_key_reaches_the_panel() {
+    let pty = Pty::open();
+    size(&pty);
+    let master = pty.master;
+    let keys = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        write_all(master, b"\x1b");
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        write_all(master, b"x");
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        write_all(master, b"\x1b\x1b");
+    });
+    let mut terminal = Terminal::open(pty.slave).expect("a terminal");
+    let path = std::env::temp_dir().join("oko-shell-escape-release.oko");
+    std::fs::write(
+        &path,
+        "flag shown\nclear #05070a\nrect 0 0 4 4 #123456 when shown\nterm 10 10 60 16 console 1 #ff9d00\ninput console\non key x set shown true",
+    )
+    .expect("a document");
+
+    let mut out: Vec<u8> = Vec::new();
+    super::shell::run(&path, &mut out, &mut terminal).expect("the console runs");
+    keys.join().expect("the keys were sent");
+
+    let sent = String::from_utf8_lossy(&out);
+    assert!(
+        sent.contains("38;2;18;52;86"),
+        "the panel key painted the shape it sets: {sent:?}"
+    );
+}
+
 /// Give the pty a size, so the frame it is handed has cells to paint.
 fn size(pty: &Pty) {
     let size = libc::winsize {

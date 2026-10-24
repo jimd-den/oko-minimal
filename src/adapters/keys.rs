@@ -60,10 +60,12 @@ impl Decoder {
 
     /// The escape key, for an escape byte that nothing followed.
     ///
-    /// A read that timed out ends a sequence that never arrived, so the
-    /// escape is a key of its own and the rest of the bytes are noise.
+    /// A read that timed out ends the wait for a sequence: an escape byte
+    /// alone is a key of its own. Half a sequence is not an escape — its
+    /// bytes stay, and the key they spell lands whenever the rest arrives,
+    /// so a sequence split by the wait is still the one key it always was.
     pub fn flush(&mut self) -> Option<Event> {
-        if self.pending.first() == Some(&ESCAPE) {
+        if self.pending == [ESCAPE] {
             self.pending.clear();
             return Some(Event::Key(Key::plain(KeyCode::Escape)));
         }

@@ -10,6 +10,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::time::{Duration, Instant, SystemTime};
 
+use crate::core::event::Event;
 use crate::core::session::Effect;
 
 use super::command;
@@ -65,17 +66,16 @@ pub fn run(
         if count > 0 {
             decoder.feed(&buffer[..count]);
             while let Some(event) = decoder.event() {
-                match runtime.event(event) {
-                    Some(Effect::ReclaimDisplay) => running = false,
-                    Some(Effect::Repaint) => present(&mut out, &mut screen, &runtime)?,
-                    Some(Effect::Run { term, command: cmd }) => {
-                        let text = command::run(&cmd);
-                        runtime.append(&term, &text);
-                        present(&mut out, &mut screen, &runtime)?;
-                    }
-                    Some(Effect::Deliver { .. }) | None => {}
+                if !drive(&mut runtime, event, &mut out, &mut screen)? {
+                    running = false;
+                    break;
                 }
             }
+        } else if let Some(event) = decoder.flush() {
+            // The wait brought nothing, so it ends the decoder's wait too:
+            // an escape byte it outlasted is a key of its own, and this is
+            // the moment it lands — one frame after it was pressed.
+            running = drive(&mut runtime, event, &mut out, &mut screen)?;
         }
         let stamp = stamp(path);
         if stamp != seen {
@@ -97,6 +97,32 @@ pub fn run(
     out.flush()
 }
 
+/// Give one event to the runtime and do what it asks.
+///
+/// Answers whether the loop goes on: handing the display back is the one
+/// effect that ends it.
+fn drive(
+    runtime: &mut Runtime,
+    event: Event,
+    out: &mut (impl Write + ?Sized),
+    screen: &mut Option<Screen>,
+) -> io::Result<bool> {
+    match runtime.event(event) {
+        Some(Effect::ReclaimDisplay) => Ok(false),
+        Some(Effect::Repaint) => {
+            present(out, screen, runtime)?;
+            Ok(true)
+        }
+        Some(Effect::Run { term, command: cmd }) => {
+            let text = command::run(&cmd);
+            runtime.append(&term, &text);
+            present(out, screen, runtime)?;
+            Ok(true)
+        }
+        Some(Effect::Deliver { .. }) | None => Ok(true),
+    }
+}
+
 fn feed(runtime: &mut Runtime, now: u64) -> bool {
     let mut changed = false;
     for (term, cmd) in runtime.due_feeds(now) {
@@ -114,7 +140,7 @@ fn load(runtime: &mut Runtime, text: &str) {
 
 /// Put the frame on the screen.
 pub fn present(
-    out: &mut impl Write,
+    out: &mut (impl Write + ?Sized),
     screen: &mut Option<Screen>,
     runtime: &Runtime,
 ) -> io::Result<()> {

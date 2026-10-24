@@ -58,3 +58,20 @@ fn an_escape_that_nothing_followed_is_a_key_of_its_own() {
         Some(Event::Key(Key::plain(KeyCode::Escape)))
     );
 }
+
+#[test]
+fn a_sequence_split_by_a_timeout_still_spells_its_key() {
+    let mut decoder = Decoder::new();
+    decoder.feed(b"\x1b[");
+
+    assert_eq!(decoder.event(), None);
+    assert_eq!(decoder.flush(), None, "half a sequence is not an escape");
+
+    decoder.feed(b"A");
+
+    assert_eq!(
+        decoder.event(),
+        Some(Event::Key(Key::plain(KeyCode::Up))),
+        "the rest of the sequence, whenever it arrives, completes the key"
+    );
+}
