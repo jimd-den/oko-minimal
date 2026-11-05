@@ -1,0 +1,15 @@
+[package]
+name = "oko-wasm-preview"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Same reader the PR core uses for real fonts (ADR 0011). Pure Rust.
+skrifa = { version = "0.46.2", default-features = false, features = ["std"] }
+
+[profile.release]
+opt-level = 3
+panic = "abort"
