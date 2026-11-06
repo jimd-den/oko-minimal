@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OKO — Star Trek preview (WASM)</title>
+<style>
+  body { background:#04060a; color:#cfe3f5; font-family:system-ui, sans-serif; margin:0; padding:16px; }
+  h1 { color:#ff9d00; font-size:20px; margin:0 0 4px; letter-spacing:1px; }
+  p { margin:6px 0; line-height:1.45; max-width:900px; }
+  .sub { color:#9fd8ef; }
+  canvas { display:block; background:#000; max-width:100%; margin:12px 0; border:1px solid #1f6feb; }
+  canvas.pixelated { image-rendering:pixelated; width:min(960px, 100%); }
+  button { background:#ff9d00; color:#05070a; border:0; padding:10px 14px; margin:0 6px 6px 0; font-size:15px; font-weight:700; cursor:pointer; border-radius:6px; }
+  button.alt { background:#4fc3f7; }
+  button.ghost { background:#222; color:#cfe3f5; }
+  .chip { display:inline-block; padding:4px 10px; margin:0 6px 6px 0; border-radius:20px; background:#222; color:#888; font-size:13px; }
+  .chip.on { background:#ff9d00; color:#05070a; }
+  .note { background:#111; border-left:4px solid #ff9d00; padding:10px 12px; max-width:900px; }
+  .note b { color:#ff9d00; }
+  details { max-width:900px; margin-top:12px; }
+  pre { background:#000; color:#9fd8ef; padding:12px; overflow:auto; font-size:12px; line-height:1.4; }
+  #status { color:#ffcb9c; }
+</style>
+</head>
+<body>
+<h1>USS ENTERPRISE — OKO LCARS PREVIEW</h1>
+<p class="sub">oko-minimal PR #4 (<code>feature/escape-timeout</code> @ <code>ec3a55f</code>) — the real pure core, compiled to WebAssembly. No JavaScript draws anything: JS only copies pixels to the canvas and forwards keys.</p>
+
+<p>
+  <button id="btn-lcars">LCARS — PR #4 panel</button>
+  <button id="btn-modern" class="alt">Modern 1080p — heavy design</button>
+  <button id="btn-play" class="ghost">Pause</button>
+</p>
+<p>
+  <button data-key="t">T tactical</button>
+  <button data-key="e">E engineering</button>
+  <button data-key="a">A alert</button>
+  <button data-key="1">1 uname</button>
+  <button data-key="2">2 ps</button>
+  <button data-key="3">3 df</button>
+  <button data-key="4">4 ls</button>
+  <button data-key="i">I focus</button>
+  <button data-key="q">Q quit</button>
+</p>
+<p>
+  <span class="chip" id="chip-tactical">TACTICAL</span>
+  <span class="chip" id="chip-engineering">ENGINEERING</span>
+  <span class="chip" id="chip-science">SCIENCE</span>
+  <span class="chip" id="chip-alert">ALERT</span>
+  <span id="status">loading…</span>
+</p>
+
+<canvas id="screen" width="80" height="48"></canvas>
+
+<div class="note">
+  <b>Honest limits of this preview.</b> The terminals show placeholder text and
+  feeds / <code>run</code> bindings do <i>not</i> execute commands — there is no shell in a
+  browser, and the page labels that text as preview. The 1080p panel renders in
+  software (the real core rasterizer, no GPU), so it runs at roughly 10–15 fps
+  here; the small LCARS panel runs at full frame rate. Keys work: T / E / A toggle
+  flags, 1–4 show the command that <i>would</i> run, Q quits (press R to restart).
+</div>
+
+<details>
+  <summary>Show the .oko source being rendered</summary>
+  <pre id="source">loading…</pre>
+</details>
+<details>
+  <summary>What this proves — and what it doesn't</summary>
+  <pre>Proves: SVG design time → .oko display list → the same pure Rust core
+that runs on the bare console can run in a browser as WASM, with the
+same animation, flags, and key bindings — no V8 JS engine in the loop
+for the UI itself, no DOM, no CSS.
+
+Does not prove: a full browser. Terminals, feeds, and shell commands
+live in oko's adapters (libc / PTY), which do not compile to WASM.
+That half stays native. This preview is the display-list half only.</pre>
+</details>
+
+<script src="preview.js"></script>
+</body>
+</html>
