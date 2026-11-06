@@ -1,0 +1,395 @@
+# USS ENTERPRISE NCC-1701-D // LCARS OPERATIONS - UNIX SUBSYSTEM (v3: deck navigation, Inter)
+flag tactical false
+flag engineering false
+flag science false
+flag alert false
+font "inter"
+clear #04060a
+
+# starfield
+rect 1027 786 3 3 #8fa5bd after 432ms to 1027 786 3 3 #141c28 over 1600ms to 1027 786 3 3 #8fa5bd over 1600ms loop
+rect 525 344 2 2 #54677f
+rect 1067 347 2 2 #8fa5bd
+rect 386 140 2 2 #54677f
+rect 1186 388 2 2 #54677f
+rect 506 627 2 2 #3d4c61
+rect 1866 1036 2 2 #6d84a0
+rect 846 422 2 2 #6d84a0
+rect 1388 392 2 2 #6d84a0
+rect 365 31 3 3 #8fa5bd
+rect 1031 23 3 3 #6d84a0
+rect 1008 513 2 2 #8fa5bd
+rect 525 944 2 2 #54677f
+rect 616 797 2 2 #6d84a0
+rect 1442 490 2 2 #54677f
+rect 528 834 3 3 #3d4c61
+rect 1895 675 2 2 #3d4c61
+rect 1706 68 2 2 #3d4c61 after 1811ms to 1706 68 2 2 #141c28 over 1600ms to 1706 68 2 2 #3d4c61 over 1600ms loop
+rect 796 529 2 2 #6d84a0
+rect 1765 118 3 3 #6d84a0
+rect 1387 907 2 2 #54677f
+rect 641 523 3 3 #8fa5bd
+rect 1289 1052 2 2 #8fa5bd
+rect 355 109 2 2 #6d84a0
+rect 58 677 3 3 #3d4c61
+rect 567 85 2 2 #6d84a0
+rect 157 131 2 2 #8fa5bd
+rect 766 730 3 3 #54677f
+rect 756 155 2 2 #6d84a0
+rect 176 452 2 2 #8fa5bd
+rect 410 550 2 2 #6d84a0
+rect 1858 525 2 2 #54677f
+rect 1805 392 2 2 #3d4c61
+rect 151 785 2 2 #6d84a0
+rect 1388 212 2 2 #8fa5bd after 1659ms to 1388 212 2 2 #141c28 over 1600ms to 1388 212 2 2 #8fa5bd over 1600ms loop
+rect 334 733 3 3 #54677f
+rect 1689 717 3 3 #6d84a0
+rect 1612 355 2 2 #54677f
+rect 250 235 3 3 #3d4c61
+rect 480 759 2 2 #3d4c61
+rect 1024 1030 2 2 #54677f
+rect 1207 546 2 2 #6d84a0
+rect 1552 736 3 3 #3d4c61
+rect 1735 673 2 2 #3d4c61
+rect 1278 1047 2 2 #8fa5bd
+rect 169 468 2 2 #3d4c61
+rect 1642 443 2 2 #8fa5bd
+rect 1664 512 2 2 #8fa5bd
+rect 1041 541 3 3 #8fa5bd
+rect 32 315 3 3 #3d4c61
+rect 69 834 2 2 #3d4c61
+rect 924 154 3 3 #8fa5bd after 564ms to 924 154 3 3 #141c28 over 1600ms to 924 154 3 3 #8fa5bd over 1600ms loop
+rect 938 1050 3 3 #3d4c61
+rect 1352 1047 2 2 #8fa5bd
+rect 29 377 2 2 #6d84a0
+rect 661 633 3 3 #8fa5bd
+rect 1627 459 3 3 #3d4c61
+rect 640 535 3 3 #3d4c61
+rect 1616 151 2 2 #54677f
+rect 403 761 2 2 #8fa5bd
+rect 909 778 2 2 #54677f
+rect 859 899 2 2 #6d84a0
+rect 568 410 2 2 #3d4c61
+rect 324 878 2 2 #54677f
+rect 305 476 3 3 #8fa5bd
+rect 320 785 3 3 #54677f
+rect 1664 90 3 3 #3d4c61
+rect 1803 586 2 2 #8fa5bd
+rect 339 64 2 2 #54677f after 750ms to 339 64 2 2 #141c28 over 1600ms to 339 64 2 2 #54677f over 1600ms loop
+rect 171 93 3 3 #8fa5bd
+rect 1770 512 2 2 #8fa5bd
+rect 1075 862 2 2 #54677f
+rect 675 303 2 2 #54677f
+rect 1786 804 2 2 #8fa5bd
+rect 428 583 3 3 #6d84a0
+rect 1883 1049 2 2 #54677f
+rect 1136 684 3 3 #54677f
+rect 1093 558 2 2 #6d84a0
+rect 1658 934 2 2 #3d4c61
+rect 1896 928 2 2 #3d4c61
+rect 1194 656 3 3 #8fa5bd
+rect 1887 198 3 3 #8fa5bd
+rect 874 750 3 3 #3d4c61
+rect 89 513 2 2 #54677f
+rect 352 970 3 3 #8fa5bd
+rect 266 542 2 2 #54677f after 680ms to 266 542 2 2 #141c28 over 1600ms to 266 542 2 2 #54677f over 1600ms loop
+rect 325 16 2 2 #54677f
+rect 637 258 3 3 #3d4c61
+rect 97 652 2 2 #6d84a0
+rect 482 435 2 2 #3d4c61
+rect 875 174 3 3 #8fa5bd
+rect 1409 450 2 2 #6d84a0
+rect 880 385 2 2 #8fa5bd
+rect 94 1035 2 2 #54677f
+rect 351 560 3 3 #6d84a0
+rect 602 509 2 2 #6d84a0
+rect 1015 178 2 2 #54677f
+rect 1751 946 2 2 #3d4c61
+rect 716 400 2 2 #8fa5bd
+rect 1815 502 2 2 #8fa5bd
+rect 1457 624 3 3 #54677f
+rect 584 305 2 2 #8fa5bd
+rect 478 639 2 2 #6d84a0 after 2067ms to 478 639 2 2 #141c28 over 1600ms to 478 639 2 2 #6d84a0 over 1600ms loop
+rect 1812 209 2 2 #3d4c61
+rect 304 71 3 3 #6d84a0
+rect 294 635 3 3 #8fa5bd
+rect 868 19 2 2 #6d84a0
+rect 1695 225 2 2 #3d4c61
+rect 596 292 2 2 #6d84a0
+rect 1109 741 2 2 #6d84a0
+
+# outer frame
+rect 24 24 1872 2 #2a3646
+rect 24 1054 1872 2 #2a3646
+rect 24 24 2 1032 #2a3646
+rect 1894 24 2 1032 #2a3646
+rect 24 24 120 10 #f79d65
+rect 1776 24 120 10 #9393e8
+rect 24 1046 120 10 #c3a6d9
+rect 1776 1046 120 10 #6fc3df
+
+# header
+path M 68 52 L 308 52 Q 332 52 332 76 Q 332 100 308 100 L 68 100 Q 44 100 44 76 Q 44 52 68 52 Z fill #f79d65
+text 92 62 "LCARS" 4 #160b02
+text 380 50 "STARFLEET OPERATIONS" 5 #e8eef5
+text 382 102 "USS ENTERPRISE NCC-1701-D // UNIX SUBSYSTEM 7.4.1 // TTY CONSOLE" 2 #5f7186
+text 1560 48 "SHIP TIME" 2 #5f7186
+term 1560 76 210 26 clock 3 #ffcb9c
+feed clock "date '+%H:%M:%S'" every 1s
+rect 1330 56 32 12 #7fd08c
+rect 1370 56 32 12 #6fc3df
+rect 1410 56 32 12 #9393e8
+rect 1450 56 32 12 #ffcb9c
+rect 1490 56 32 12 #f79d65
+text 1330 78 "ALL SYSTEMS NOMINAL" 2 #7fd08c
+
+# left rail (navigation)
+path M 72 150 L 276 150 Q 300 150 300 174 Q 300 198 276 198 L 72 198 Q 48 198 48 174 Q 48 150 72 150 Z fill #9393e8
+text 76 163 "TACTICAL" 3 #0b0e14
+rect 312 164 10 20 #9393e8 when tactical
+rect 326 169 6 10 #e8eef5 when tactical
+path M 72 216 L 276 216 Q 300 216 300 240 Q 300 264 276 264 L 72 264 Q 48 264 48 240 Q 48 216 72 216 Z fill #f79d65
+text 76 229 "ENGINEERING" 3 #0b0e14
+rect 312 230 10 20 #f79d65 when engineering
+rect 326 235 6 10 #e8eef5 when engineering
+path M 72 282 L 276 282 Q 300 282 300 306 Q 300 330 276 330 L 72 330 Q 48 330 48 306 Q 48 282 72 282 Z fill #6fc3df
+text 76 295 "SCIENCE" 3 #0b0e14
+rect 312 296 10 20 #6fc3df when science
+rect 326 301 6 10 #e8eef5 when science
+path M 72 348 L 276 348 Q 300 348 300 372 Q 300 396 276 396 L 72 396 Q 48 396 48 372 Q 48 348 72 348 Z fill #c3a6d9
+text 76 361 "COMMS" 3 #0b0e14
+path M 72 414 L 276 414 Q 300 414 300 438 Q 300 462 276 462 L 72 462 Q 48 462 48 438 Q 48 414 72 414 Z fill #ffcb9c
+text 76 427 "OPS" 3 #0b0e14
+
+text 48 500 "CORE LOAD" 2 #5f7186
+rect 48 532 252 18 #070b11
+rect 48 532 120 18 #6fc3df to 48 532 228 18 #6fc3df over 3s to 48 532 120 18 #6fc3df over 3s loop
+rect 48 556 2 10 #2a3646
+rect 73 556 2 10 #2a3646
+rect 98 556 2 10 #2a3646
+rect 123 556 2 10 #2a3646
+rect 148 556 2 10 #2a3646
+rect 173 556 2 10 #2a3646
+rect 198 556 2 10 #2a3646
+rect 223 556 2 10 #2a3646
+rect 248 556 2 10 #2a3646
+rect 273 556 2 10 #2a3646
+rect 298 556 2 10 #2a3646
+text 48 584 "WARP FIELD INTEGRITY" 2 #5f7186
+rect 48 616 252 18 #070b11
+rect 48 616 236 18 #f79d65 to 48 616 188 18 #ffb35c over 5s to 48 616 236 18 #f79d65 over 5s loop
+rect 48 640 2 10 #2a3646
+rect 73 640 2 10 #2a3646
+rect 98 640 2 10 #2a3646
+rect 123 640 2 10 #2a3646
+rect 148 640 2 10 #2a3646
+rect 173 640 2 10 #2a3646
+rect 198 640 2 10 #2a3646
+rect 223 640 2 10 #2a3646
+rect 248 640 2 10 #2a3646
+rect 273 640 2 10 #2a3646
+rect 298 640 2 10 #2a3646
+text 48 668 "SHIELD MODULATION" 2 #5f7186
+rect 48 700 252 18 #070b11
+rect 48 700 40 18 #9393e8 to 300 700 40 18 #9393e8 over 4s loop
+text 48 748 "PWR" 2 #5f7186
+text 48 778 "TMP" 2 #5f7186
+text 48 808 "NET" 2 #5f7186
+rect 120 748 180 12 #7fd08c
+rect 120 778 180 12 #7fd08c
+rect 120 808 180 12 #6fc3df
+text 48 852 "TELEMETRY" 2 #5f7186
+term 48 878 252 104 telemetry 1 #9fd8ef
+feed telemetry "date +%T; cat /proc/loadavg; grep -E 'MemTotal|MemAvail' /proc/meminfo; df -h / | tail -1; echo ---" every 2s
+
+# main console (the ops view - never covered)
+text 356 150 "MAIN CONSOLE" 3 #e8eef5
+text 700 158 "- /BIN/SH - TTY1 - FEEDS LIVE" 2 #5f7186
+rect 340 196 1000 2 #2a3646
+rect 340 814 1000 2 #2a3646
+rect 340 196 2 618 #2a3646
+rect 1338 196 2 618 #2a3646
+rect 340 196 60 8 #6fc3df
+rect 1280 808 60 8 #6fc3df
+term 364 220 952 560 bridge 3 #cfe3f5
+feed bridge "uname -a && echo && uptime && echo && df -h / | tail -1 && grep -E 'MemTotal|MemFree' /proc/meminfo"
+rect 340 848 238 54 #f79d65
+text 368 866 "1 SYSINFO" 2 #0b0e14
+rect 594 848 238 54 #9393e8
+text 622 866 "2 PROCESSES" 2 #0b0e14
+rect 848 848 238 54 #6fc3df
+text 876 866 "3 FILESYSTEM" 2 #0b0e14
+rect 1102 848 238 54 #c3a6d9
+text 1130 866 "4 WORKSPACE" 2 #0b0e14
+text 340 934 "RUN KEYS EXECUTE INTO THE CONSOLE - F FOCUSES IT FOR LIVE TYPING - O RESTORES THE BANNER" 2 #5f7186
+
+# deck - persistent menu
+text 1400 150 "STATION SELECT" 3 #e8eef5
+rect 1400 232 16 64 #9393e8
+text 1440 250 "T - TACTICAL" 3 #e8eef5
+rect 1400 328 16 64 #f79d65
+text 1440 346 "E - ENGINEERING" 3 #e8eef5
+rect 1400 424 16 64 #6fc3df
+text 1440 442 "S - SCIENCE" 3 #e8eef5
+rect 1372 520 500 2 #2a3646
+# deck standby graphic (shapes only - stages cover it)
+path M 1472 713 C 1472 647 1525 594 1592 594 C 1659 594 1712 647 1712 713 C 1712 779 1659 832 1592 832 C 1525 832 1472 779 1472 713 Z stroke #1b2635
+path M 1522 713 C 1522 674 1553 643 1592 643 C 1631 643 1662 674 1662 713 C 1662 752 1631 783 1592 783 C 1553 783 1522 752 1522 713 Z stroke #1b2635
+line 1592 574 1592 852 #1b2635
+line 1452 713 1732 713 #1b2635
+rect 1780 580 40 40 #1b2635
+rect 1780 670 40 40 #1b2635
+rect 1780 760 40 40 #1b2635
+
+# deck stage - tactical (content zone only)
+rect 1372 196 500 710 #05080d when tactical
+rect 1372 196 500 2 #2a3646 when tactical
+rect 1372 906 500 2 #2a3646 when tactical
+rect 1372 196 2 710 #2a3646 when tactical
+rect 1870 196 2 710 #2a3646 when tactical
+rect 1372 196 60 8 #9393e8 when tactical
+rect 1812 900 60 8 #9393e8 when tactical
+text 1400 545 "SHIELD BUBBLE" 2 #5f7186 when tactical
+path M 1380 713 C 1380 647 1433 594 1500 594 C 1567 594 1620 647 1620 713 C 1620 779 1567 832 1500 832 C 1433 832 1380 779 1380 713 Z stroke #6fc3df when tactical
+path M 1418 713 C 1418 668 1455 631 1500 631 C 1545 631 1582 668 1582 713 C 1582 758 1545 795 1500 795 C 1455 795 1418 758 1418 713 Z stroke #9393e8 when tactical
+rect 1476 689 48 48 #e88ca0 to 1468 681 64 64 #e88ca0 over 900ms to 1476 689 48 48 #e88ca0 over 900ms loop when tactical
+text 1660 545 "PHASER BANKS" 2 #5f7186 when tactical
+rect 1660 580 192 20 #070b11 when tactical
+rect 1660 580 40 20 #e88ca0 after 0ms to 1660 580 192 20 #e88ca0 over 1600ms to 1660 580 40 20 #e88ca0 over 1600ms loop when tactical
+rect 1660 632 192 20 #070b11 when tactical
+rect 1660 632 40 20 #e88ca0 after 400ms to 1660 632 192 20 #e88ca0 over 1600ms to 1660 632 40 20 #e88ca0 over 1600ms loop when tactical
+rect 1660 684 192 20 #070b11 when tactical
+rect 1660 684 40 20 #e88ca0 after 800ms to 1660 684 192 20 #e88ca0 over 1600ms to 1660 684 40 20 #e88ca0 over 1600ms loop when tactical
+text 1660 748 "TORPEDOES" 2 #5f7186 when tactical
+rect 1660 782 38 52 #ffcb9c when tactical
+rect 1710 782 38 52 #ffcb9c when tactical
+rect 1760 782 38 52 #ffcb9c when tactical
+rect 1810 782 38 52 #1b2635 when tactical
+
+# deck stage - engineering
+rect 1372 196 500 710 #05080d when engineering
+rect 1372 196 500 2 #2a3646 when engineering
+rect 1372 906 500 2 #2a3646 when engineering
+rect 1372 196 2 710 #2a3646 when engineering
+rect 1870 196 2 710 #2a3646 when engineering
+rect 1372 196 60 8 #f79d65 when engineering
+rect 1812 900 60 8 #f79d65 when engineering
+text 1400 545 "WARP CORE" 2 #5f7186 when engineering
+rect 1408 580 96 36 #1b2635 after 0ms to 1408 580 96 36 #6fc3df over 600ms to 1408 580 96 36 #e8eef5 over 600ms to 1408 580 96 36 #1b2635 over 600ms loop when engineering
+rect 1408 630 96 36 #1b2635 after 200ms to 1408 630 96 36 #6fc3df over 600ms to 1408 630 96 36 #e8eef5 over 600ms to 1408 630 96 36 #1b2635 over 600ms loop when engineering
+rect 1408 680 96 36 #1b2635 after 400ms to 1408 680 96 36 #6fc3df over 600ms to 1408 680 96 36 #e8eef5 over 600ms to 1408 680 96 36 #1b2635 over 600ms loop when engineering
+rect 1408 730 96 36 #1b2635 after 600ms to 1408 730 96 36 #6fc3df over 600ms to 1408 730 96 36 #e8eef5 over 600ms to 1408 730 96 36 #1b2635 over 600ms loop when engineering
+rect 1408 780 96 36 #1b2635 after 800ms to 1408 780 96 36 #6fc3df over 600ms to 1408 780 96 36 #e8eef5 over 600ms to 1408 780 96 36 #1b2635 over 600ms loop when engineering
+rect 1408 830 96 36 #1b2635 after 1000ms to 1408 830 96 36 #6fc3df over 600ms to 1408 830 96 36 #e8eef5 over 600ms to 1408 830 96 36 #1b2635 over 600ms loop when engineering
+text 1560 554 "PLASMA FLOW" 2 #5f7186 when engineering
+rect 1560 580 292 22 #070b11 when engineering
+rect 1560 580 150 22 #f79d65 to 1560 580 250 22 #f79d65 over 2s to 1560 580 150 22 #f79d65 over 2s loop when engineering
+text 1560 642 "COOLANT LOOP" 2 #5f7186 when engineering
+rect 1560 668 292 22 #070b11 when engineering
+rect 1560 668 220 22 #6fc3df to 1560 668 130 22 #6fc3df over 2s to 1560 668 220 22 #6fc3df over 2s loop when engineering
+text 1560 730 "EPS GRID" 2 #5f7186 when engineering
+rect 1560 756 292 22 #070b11 when engineering
+rect 1560 756 60 22 #ffcb9c to 1792 756 60 22 #ffcb9c over 4s loop when engineering
+
+# deck stage - science
+rect 1372 196 500 710 #05080d when science
+rect 1372 196 500 2 #2a3646 when science
+rect 1372 906 500 2 #2a3646 when science
+rect 1372 196 2 710 #2a3646 when science
+rect 1870 196 2 710 #2a3646 when science
+rect 1372 196 60 8 #6fc3df when science
+rect 1812 900 60 8 #6fc3df when science
+rect 1400 580 2 2 #22303f when science
+rect 1400 620 2 2 #22303f when science
+rect 1400 660 2 2 #22303f when science
+rect 1400 700 2 2 #22303f when science
+rect 1400 740 2 2 #22303f when science
+rect 1400 780 2 2 #22303f when science
+rect 1400 820 2 2 #22303f when science
+rect 1440 580 2 2 #22303f when science
+rect 1440 620 2 2 #22303f when science
+rect 1440 660 2 2 #22303f when science
+rect 1440 700 2 2 #22303f when science
+rect 1440 740 2 2 #22303f when science
+rect 1440 780 2 2 #22303f when science
+rect 1440 820 2 2 #22303f when science
+rect 1480 580 2 2 #22303f when science
+rect 1480 620 2 2 #22303f when science
+rect 1480 660 2 2 #22303f when science
+rect 1480 700 2 2 #22303f when science
+rect 1480 740 2 2 #22303f when science
+rect 1480 780 2 2 #22303f when science
+rect 1480 820 2 2 #22303f when science
+rect 1520 580 2 2 #22303f when science
+rect 1520 620 2 2 #22303f when science
+rect 1520 660 2 2 #22303f when science
+rect 1520 700 2 2 #22303f when science
+rect 1520 740 2 2 #22303f when science
+rect 1520 780 2 2 #22303f when science
+rect 1520 820 2 2 #22303f when science
+rect 1560 580 2 2 #22303f when science
+rect 1560 620 2 2 #22303f when science
+rect 1560 660 2 2 #22303f when science
+rect 1560 700 2 2 #22303f when science
+rect 1560 740 2 2 #22303f when science
+rect 1560 780 2 2 #22303f when science
+rect 1560 820 2 2 #22303f when science
+rect 1600 580 2 2 #22303f when science
+rect 1600 620 2 2 #22303f when science
+rect 1600 660 2 2 #22303f when science
+rect 1600 700 2 2 #22303f when science
+rect 1600 740 2 2 #22303f when science
+rect 1600 780 2 2 #22303f when science
+rect 1600 820 2 2 #22303f when science
+path M 1405 713 C 1405 652 1454 603 1515 603 C 1576 603 1625 652 1625 713 C 1625 774 1576 823 1515 823 C 1454 823 1405 774 1405 713 Z stroke #6fc3df when science
+path M 1445 713 C 1445 674 1476 643 1515 643 C 1554 643 1585 674 1585 713 C 1585 752 1554 783 1515 783 C 1476 783 1445 752 1445 713 Z stroke #9393e8 when science
+line 1405 713 1625 713 #ffcb9c to 1515 603 1515 823 #ffcb9c over 5s loop when science
+rect 1468 662 9 9 #e88ca0 after 0ms to 1468 662 9 9 #571f2b over 1300ms to 1468 662 9 9 #e88ca0 over 1300ms loop when science
+rect 1552 748 8 8 #ffcb9c after 650ms to 1552 748 8 8 #57431f over 1300ms to 1552 748 8 8 #ffcb9c over 1300ms loop when science
+text 1660 560 "RETURNS" 2 #5f7186 when science
+rect 1660 596 10 10 #7fd08c when science
+text 1682 593 "USS HOOD" 2 #e8eef5 when science
+text 1682 613 "0.4 LY" 2 #ffcb9c when science
+rect 1660 652 10 10 #7fd08c when science
+text 1682 649 "STARBASE 74" 2 #e8eef5 when science
+text 1682 669 "1.2 LY" 2 #ffcb9c when science
+rect 1660 708 10 10 #7fd08c when science
+text 1682 705 "FERENGI SHIP" 2 #e8eef5 when science
+text 1682 725 "3.9 LY" 2 #ffcb9c when science
+rect 1660 764 10 10 #7fd08c when science
+text 1682 761 "CLASS-M WORLD" 2 #e8eef5 when science
+text 1682 781 "0.8 LY" 2 #ffcb9c when science
+rect 1660 820 10 10 #7fd08c when science
+text 1682 817 "ION STORM" 2 #e8eef5 when science
+text 1682 837 "6.1 LY" 2 #ffcb9c when science
+
+# deck footer strip - data cascade
+text 1400 934 "DATA CASCADE" 2 #5f7186
+rect 1400 958 92 14 #1b2635 after 0ms to 1400 958 92 14 #9393e8 over 500ms to 1400 958 92 14 #1b2635 over 900ms loop
+rect 1568 958 120 14 #1b2635 after 430ms to 1568 958 120 14 #ffcb9c over 500ms to 1568 958 120 14 #1b2635 over 900ms loop
+rect 1736 958 120 14 #1b2635 after 860ms to 1736 958 120 14 #ffcb9c over 500ms to 1736 958 120 14 #1b2635 over 900ms loop
+rect 1400 982 92 14 #1b2635 after 700ms to 1400 982 92 14 #f79d65 over 500ms to 1400 982 92 14 #1b2635 over 900ms loop
+rect 1568 982 120 14 #1b2635 after 1130ms to 1568 982 120 14 #c3a6d9 over 500ms to 1568 982 120 14 #1b2635 over 900ms loop
+rect 1736 982 44 14 #1b2635 after 1560ms to 1736 982 44 14 #c3a6d9 over 500ms to 1736 982 44 14 #1b2635 over 900ms loop
+
+# red alert
+rect 24 24 1872 14 #ff4747 when alert
+rect 24 1042 1872 14 #ff4747 when alert
+rect 1240 132 100 40 #ff4747 to 1240 132 100 40 #4a0d12 over 500ms to 1240 132 100 40 #ff4747 over 500ms loop when alert
+text 1050 56 "RED ALERT" 4 #ff4747 when alert
+
+# footer
+text 48 1006 "RAIL: T TACTICAL - E ENGINEERING - S SCIENCE (SAME KEY RETURNS) - A ALERT - F FOCUS - 1-4 RUN - O BANNER - Q QUIT" 2 #5f7186
+text 1560 1006 "OKO // DISPLAY LIST" 2 #5f7186
+
+on key t toggle tactical
+on key e toggle engineering
+on key s toggle science
+on key a toggle alert
+on key f focus bridge
+on key 1 run bridge "uname -a"
+on key 2 run bridge "ps -o pid,comm,time | head -16"
+on key 3 run bridge "df -h"
+on key 4 run bridge "ls -1 ~/workspace | head -14"
+on key o run bridge "uname -a && echo && uptime && echo && df -h / | tail -1 && grep -E 'MemTotal|MemFree' /proc/meminfo"
+on key q quit
